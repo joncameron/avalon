@@ -78,7 +78,7 @@ Avalon::Application.routes.draw do
       patch 'update_multiple'
     end
   end
-  match '/playlists/:playlist_id/items' => 'playlist_items#create', via: [:post]
+  match '/playlists/items/' => 'playlist_items#create', via: [:post]
 
   resources :avalon_annotation, only: [:create, :show, :update, :destroy]
 
