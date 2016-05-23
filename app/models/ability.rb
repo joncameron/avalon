@@ -159,6 +159,7 @@ class Ability
       end
       can :read, PlaylistItem do |playlist_item|
         can? :read, playlist_item.playlist
+        can? :read, playlist_item.annotation.master_file
       end
     end
   end
