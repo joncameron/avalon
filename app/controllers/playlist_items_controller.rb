@@ -20,7 +20,7 @@ class PlaylistItemsController < ApplicationController
     annotation.comment = comment
     annotation.start_time = start_time
     annotation.end_time = end_time
-    unless annotation.save!
+    unless annotation.save
       render json: { message: "Item was not created: #{annotation.errors.full_messages}" }, status: 500 and return
     end
     if PlaylistItem.create(playlist: @playlist, annotation: annotation)
@@ -36,7 +36,7 @@ class PlaylistItemsController < ApplicationController
     annotation.comment = params[:comment]
     annotation.start_time = time_str_to_milliseconds params[:start_time]
     annotation.end_time = time_str_to_milliseconds params[:end_time]
-    if annotation.save!
+    if annotation.save
       flash[:success] = "Playlist item details saved successfully."
     else
       flash[:error] = "Playlist item details could not be saved: #{annotation.errors.full_messages}"
