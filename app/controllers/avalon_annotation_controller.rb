@@ -42,7 +42,7 @@ class AvalonAnnotationController < ApplicationController
   # @example Rails Console command to create an annotation based of the MasterFile whose pid is avalon:20 and default values for all other fields in the annotation
   #    app.post('/avalon_annotation/', {master_file: 'avalon:20'})
   def create
-    fail ArgumentError, 'Master File Not Supplied' if params[:master_file].nil?
+    raise ArgumentError, 'Master File Not Supplied' if params[:master_file].nil?
     begin
       mf = MasterFile.find(params[:master_file])
     rescue
@@ -101,6 +101,6 @@ class AvalonAnnotationController < ApplicationController
   # @param [Symbol] The object that cannot be found (:annotation or :master_file)
   # @raise ActionController::RoutingError resolves as a 404 in browser
   def not_found(item: :annotation)
-    raise ActionController::RoutingError.new(@not_found_messages[item])
+    raise ActionController::RoutingError, @not_found_messages[item]
   end
 end

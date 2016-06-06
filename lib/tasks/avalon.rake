@@ -19,7 +19,7 @@ namespace :avalon do
     `rails generate active_annotations:install`
   end
   namespace :services do
-    services = ["jetty", "felix", "delayed_job"]
+    services = %w(jetty felix delayed_job)
     desc "Start Avalon's dependent services"
     task :start do
       services.map { |service| Rake::Task["#{service}:start"].invoke }
@@ -36,26 +36,26 @@ namespace :avalon do
     task :restart do
       services.map { |service| Rake::Task["#{service}:restart"].invoke }
     end
-   end
+  end
   namespace :assets do
-   desc "Clears javascripts/cache and stylesheets/cache"
-   task :clear => :environment do
-     FileUtils.rm(Dir['public/javascripts/cache/[^.]*'])
-     FileUtils.rm(Dir['public/stylesheets/cache/[^.]*'])
-   end
+    desc 'Clears javascripts/cache and stylesheets/cache'
+    task clear: :environment do
+      FileUtils.rm(Dir['public/javascripts/cache/[^.]*'])
+      FileUtils.rm(Dir['public/stylesheets/cache/[^.]*'])
+    end
   end
   namespace :derivative do
-   desc "Sets streaming urls for derivatives based on configured content_path in avalon.yml"
-   task :set_streams => :environment do
-     Derivative.find_each({},{batch_size:5}) do |derivative|
-       derivative.set_streaming_locations!
-       derivative.save!
-     end
-   end
+    desc 'Sets streaming urls for derivatives based on configured content_path in avalon.yml'
+    task set_streams: :environment do
+      Derivative.find_each({}, batch_size: 5) do |derivative|
+        derivative.set_streaming_locations!
+        derivative.save!
+      end
+    end
   end
   namespace :batch do
-    desc "Starts Avalon batch ingest"
-    task :ingest => :environment do
+    desc 'Starts Avalon batch ingest'
+    task ingest: :environment do
       # Starts the ingest process
       require 'avalon/batch/ingest'
 
@@ -67,16 +67,16 @@ namespace :avalon do
     end
   end
   namespace :user do
-    desc "Create user (assumes identity authentication)"
-    task :create => :environment do
-      if ENV['avalon_username'].nil? or ENV['avalon_password'].nil?
-        abort "You must specify a username and password.  Example: rake avalon:user:create avalon_username=user@example.edu avalon_password=password avalon_groups=group1,group2"
+    desc 'Create user (assumes identity authentication)'
+    task create: :environment do
+      if ENV['avalon_username'].nil? || ENV['avalon_password'].nil?
+        abort 'You must specify a username and password.  Example: rake avalon:user:create avalon_username=user@example.edu avalon_password=password avalon_groups=group1,group2'
       end
 
       require 'role_controls'
       username = ENV['avalon_username'].dup
       password = ENV['avalon_password']
-      groups = ENV['avalon_groups'].split(",")
+      groups = ENV['avalon_groups'].split(',')
 
       Identity.create!(email: username, password: password, password_confirmation: password)
       User.create!(username: username, email: username)
@@ -87,10 +87,10 @@ namespace :avalon do
 
       puts "User #{username} created and added to groups #{groups}"
     end
-    desc "Delete user"
-    task :delete => :environment do
+    desc 'Delete user'
+    task delete: :environment do
       if ENV['avalon_username'].nil?
-        abort "You must specify a username  Example: rake avalon:user:delete avalon_username=user@example.edu"
+        abort 'You must specify a username  Example: rake avalon:user:delete avalon_username=user@example.edu'
       end
 
       require 'role_controls'
@@ -105,40 +105,40 @@ namespace :avalon do
 
       puts "Deleted user #{username} and removed them from groups #{groups}"
     end
-    desc "Change password (assumes identity authentication)"
-    task :passwd => :environment do
-      if ENV['avalon_username'].nil? or ENV['avalon_password'].nil?
-        abort "You must specify a username and password.  Example: rake avalon:user:passwd avalon_username=user@example.edu avalon_password=password"
+    desc 'Change password (assumes identity authentication)'
+    task passwd: :environment do
+      if ENV['avalon_username'].nil? || ENV['avalon_password'].nil?
+        abort 'You must specify a username and password.  Example: rake avalon:user:passwd avalon_username=user@example.edu avalon_password=password'
       end
 
       username = ENV['avalon_username'].dup
       password = ENV['avalon_password']
-      Identity.where(email: username).each {|identity| identity.password = password; identity.save}
+      Identity.where(email: username).each { |identity| identity.password = password; identity.save }
 
       puts "Updated password for user #{username}"
     end
   end
 
   namespace :test do
-    desc "Create a test media object"
-    task :media_object => :environment do
+    desc 'Create a test media object'
+    task media_object: :environment do
       require 'factory_girl'
       require 'faker'
-      Dir[Rails.root.join("spec/factories/**/*.rb")].each {|f| require f}
+      Dir[Rails.root.join('spec/factories/**/*.rb')].each { |f| require f }
 
-      mf_count = [ENV['master_files'].to_i,1].max
+      mf_count = [ENV['master_files'].to_i, 1].max
       mo = FactoryGirl.create(:media_object)
-      mf_count.times do |i|
+      mf_count.times do |_i|
         FactoryGirl.create(:master_file_with_derivative, mediaobject: mo)
       end
       puts mo.pid
     end
   end
 
-  desc "Reindex all Avalon objects"
-  task :reindex => :environment do
+  desc 'Reindex all Avalon objects'
+  task reindex: :environment do
     query = "pid~#{Avalon::Configuration.lookup('fedora.namespace')}:*"
-    #Override of ActiveFedora::Base.reindex_everything("pid~#{prefix}:*") including error handling/reporting
+    # Override of ActiveFedora::Base.reindex_everything("pid~#{prefix}:*") including error handling/reporting
     ActiveFedora::Base.send(:connections).each do |conn|
       conn.search(query) do |object|
         next if object.pid.start_with?('fedora-system:')
@@ -151,9 +151,8 @@ namespace :avalon do
     end
   end
 
-  desc "Identify invalid Avalon Media Objects"
-  task :validate => :environment do
-    MediaObject.find_each({},{batch_size:5}) {|mo| puts "#{mo.pid}: #{mo.errors.full_messages}" if !mo.valid? }
+  desc 'Identify invalid Avalon Media Objects'
+  task validate: :environment do
+    MediaObject.find_each({}, batch_size: 5) { |mo| puts "#{mo.pid}: #{mo.errors.full_messages}" unless mo.valid? }
   end
-
 end

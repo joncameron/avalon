@@ -1,14 +1,14 @@
 # Copyright 2011-2015, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
+#
+# Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-#   CONDITIONS OF ANY KIND, either express or implied. See the License for the 
+#   CONDITIONS OF ANY KIND, either express or implied. See the License for the
 #   specific language governing permissions and limitations under the License.
 # ---  END LICENSE_HEADER BLOCK  ---
 
@@ -20,9 +20,9 @@ module Avalon
       include Enumerable
       extend Forwardable
 
-      EXTENSIONS = ['csv','xls','xlsx','ods']
-      FILE_FIELDS = [:file,:label,:offset,:skip_transcoding,:absolute_location,:date_digitized]
-      SKIP_FIELDS = [:collection]
+      EXTENSIONS = %w(csv xls xlsx ods).freeze
+      FILE_FIELDS = [:file, :label, :offset, :skip_transcoding, :absolute_location, :date_digitized].freeze
+      SKIP_FIELDS = [:collection].freeze
 
       def_delegators :@entries, :each
       attr_reader :spreadsheet, :file, :name, :email, :entries, :package
@@ -31,7 +31,7 @@ module Avalon
         def locate(root)
           possibles = Dir[File.join(root, "**/*.{#{EXTENSIONS.join(',')}}")]
           possibles.reject do |file|
-            File.basename(file) =~ /^~\$/ or self.error?(file) or self.processing?(file) or self.processed?(file)
+            File.basename(file) =~ /^~\$/ || error?(file) || processing?(file) || processed?(file)
           end
         end
 
@@ -44,7 +44,7 @@ module Avalon
               return true
             end
           end
-          return false
+          false
         end
 
         def processing?(file)
@@ -71,9 +71,9 @@ module Avalon
 
           header_row = @spreadsheet.row(@spreadsheet.first_row + 1)
 
-          @field_names = header_row.collect { |field| 
-            field.to_s.downcase.gsub(/\s/,'_').strip.to_sym 
-          }
+          @field_names = header_row.collect do |field|
+            field.to_s.downcase.gsub(/\s/, '_').strip.to_sym
+          end
           create_entries!
         rescue Exception => err
           error! "Invalid manifest file: #{err.message}"
@@ -81,16 +81,16 @@ module Avalon
       end
 
       def start!
-        File.open("#{@file}.processing",'w') { |f| f.puts Time.now.xmlschema }
+        File.open("#{@file}.processing", 'w') { |f| f.puts Time.now.xmlschema }
       end
 
-      def error! msg=nil
-        File.open("#{@file}.error",'a') do |f| 
+      def error!(msg = nil)
+        File.open("#{@file}.error", 'a') do |f|
           if msg.nil?
             entries.each do |entry|
               if entry.errors.count > 0
                 f.puts "Row #{entry.row}:"
-                entry.errors.messages.each { |k,m| f.puts %{  #{m.join("\n  ")}} }
+                entry.errors.messages.each { |_k, m| f.puts %(  #{m.join("\n  ")}) }
               end
             end
           else
@@ -105,7 +105,7 @@ module Avalon
       end
 
       def commit!
-        File.open("#{@file}.processed",'w') { |f| f.puts Time.now.xmlschema }
+        File.open("#{@file}.processed", 'w') { |f| f.puts Time.now.xmlschema }
         rollback! if processing?
       end
 
@@ -128,8 +128,9 @@ module Avalon
       end
 
       private
+
       def true?(value)
-        not (value.to_s =~ /^(y(es)?|t(rue)?)$/i).nil?
+        !(value.to_s =~ /^(y(es)?|t(rue)?)$/i).nil?
       end
 
       def create_entries!
@@ -137,39 +138,37 @@ module Avalon
         l = @spreadsheet.last_row
         f.upto(l) do |index|
           opts = {
-            :publish => false,
-            :hidden  => false
+            publish: false,
+            hidden: false
           }
 
           values = @spreadsheet.row(index).collect do |val|
-            (val.is_a?(Float) and (val == val.to_i)) ? val.to_i.to_s : val.to_s
+            (val.is_a?(Float) && (val == val.to_i)) ? val.to_i.to_s : val.to_s
           end
-          content=[]
+          content = []
 
-          fields = Hash.new { |h,k| h[k] = [] }
-          @field_names.each_with_index do |f,i| 
-            unless f.blank? || SKIP_FIELDS.include?(f) || values[i].blank?
-              if FILE_FIELDS.include?(f)
-                content << {} if f == :file
-                content.last[f] = f == :skip_transcoding ? true?(values[i]) : values[i]
-              else
-                fields[f] << values[i] 
-              end
-            end
-          end
-
-          opts.keys.each { |opt|
-            val = Array(fields.delete(opt)).first.to_s
-            if opts[opt].is_a?(TrueClass) or opts[opt].is_a?(FalseClass)
-              opts[opt] = true?(val)
+          fields = Hash.new { |h, k| h[k] = [] }
+          @field_names.each_with_index do |f, i|
+            if f.blank? || SKIP_FIELDS.include?(f) || values[i].blank?
+              fields[f] << values[i]
             else
-              opts[opt] = val
-            end
-          }
+              next unless FILE_FIELDS.include?(f)
+              content << {} if f == :file
+              content.last[f] = f == :skip_transcoding ? true?(values[i]) : values[i]
+              end
+          end
+
+          opts.keys.each do |opt|
+            val = Array(fields.delete(opt)).first.to_s
+            opts[opt] = if opts[opt].is_a?(TrueClass) || opts[opt].is_a?(FalseClass)
+                          true?(val)
+                        else
+                          val
+                        end
+          end
           entries << Entry.new(fields.select { |f| !FILE_FIELDS.include?(f) }, content, opts, index, self)
         end
       end
-
     end
   end
 end
