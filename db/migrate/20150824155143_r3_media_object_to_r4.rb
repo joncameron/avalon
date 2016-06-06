@@ -1,7 +1,7 @@
 class R3MediaObjectToR4 < ActiveRecord::Migration
   def up
-    say_with_time('R3->R4') do
-      MediaObject.find_each({ 'has_model_version_ssim' => 'R3' }, batch_size: 5) { |obj| mediaobject_to_r4(obj) }
+    say_with_time("R3->R4") do
+      MediaObject.find_each({'has_model_version_ssim' => 'R3'},{batch_size:5}) { |obj| mediaobject_to_r4(obj) }
     end
   end
 
@@ -21,4 +21,5 @@ class R3MediaObjectToR4 < ActiveRecord::Migration
       mo.save_as_version('R4', validate: false)
     end
   end
+
 end

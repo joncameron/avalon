@@ -20,8 +20,9 @@ require 'avalon/controller/controller_behavior'
 class MasterFilesController < ApplicationController
   include Avalon::Controller::ControllerBehavior
 
-  before_filter :authenticate_user!, only: [:create]
-  before_filter :ensure_readable_filedata, only: [:create]
+  before_filter :authenticate_user!, :only => [:create]
+  before_filter :ensure_readable_filedata, :only => [:create]
+
 
   # Renders the captions content for an object or alerts the user that no caption content is present with html present
   # @return [String] The rendered template
@@ -29,10 +30,10 @@ class MasterFilesController < ApplicationController
     @masterfile = MasterFile.find(params[:id])
     authorize! :read, @masterfile
     ds = @masterfile.datastreams['captions']
-    if ds.nil? || ds.new?
-      render text: 'Not Found', status: :not_found
+    if ds.nil? or ds.new?
+      render :text => 'Not Found', :status => :not_found
     else
-      render text: ds.content, content_type: ds.mimeType, label: ds.label
+      render :text => ds.content, :content_type => ds.mimeType, :label => ds.label
     end
   end
 
@@ -48,13 +49,13 @@ class MasterFilesController < ApplicationController
   def embed
     @masterfile = MasterFile.find(params[:id])
     if can? :read, @masterfile.mediaobject
-      @token = @masterfile.nil? ? '' : StreamToken.find_or_create_session_token(session, @masterfile.pid)
+      @token = @masterfile.nil? ? "" : StreamToken.find_or_create_session_token(session, @masterfile.pid)
       @stream_info = @masterfile.stream_details(@token, default_url_options[:host])
     end
     respond_to do |format|
       format.html do
-        response.headers.delete 'X-Frame-Options'
-        render layout: 'embed'
+        response.headers.delete "X-Frame-Options"
+        render :layout => 'embed'
       end
     end
   end
@@ -63,31 +64,27 @@ class MasterFilesController < ApplicationController
     if params[:url].present?
       pid = params[:url].split('?')[0].split('/').last
       mf = MasterFile.where("dc_identifier_tesim:\"#{pid}\"").first
-      mf ||= begin
-               MasterFile.find(pid)
-             rescue
-               nil
-             end
+      mf ||= MasterFile.find(pid) rescue nil
       if mf.present?
         width = params[:maxwidth] || MasterFile::EMBED_SIZE[:medium]
-        height = mf.is_video? ? (width.to_f / mf.display_aspect_ratio.to_f).floor : MasterFile::AUDIO_HEIGHT
+        height = mf.is_video? ? (width.to_f/mf.display_aspect_ratio.to_f).floor : MasterFile::AUDIO_HEIGHT
         maxheight = params['maxheight'].to_f
-        if 0 < maxheight && maxheight < height
-          width = (maxheight * mf.display_aspect_ratio.to_f).floor
+        if 0<maxheight && maxheight<height
+          width = (maxheight*mf.display_aspect_ratio.to_f).floor
           height = maxheight.to_i
         end
         width = width.to_i
         hash = {
-          'version' => '1.0',
-          'type' => mf.is_video? ? 'video' : 'rich',
-          'provider_name' => Avalon::Configuration.lookup('name') || 'Avalon Media System',
-          'provider_url' => request.base_url,
-          'width' => width,
-          'height' => height,
-          'html' => mf.embed_code(width, urlappend: '/embed')
+          "version" => "1.0",
+          "type" => mf.is_video? ? "video" : "rich",
+          "provider_name" => Avalon::Configuration.lookup('name') || 'Avalon Media System',
+          "provider_url" => request.base_url,
+          "width" => width,
+          "height" => height,
+          "html" => mf.embed_code(width, {urlappend: '/embed'})
         }
         respond_to do |format|
-          format.xml  { render xml: hash.to_xml(root: 'oembed') }
+          format.xml  { render xml: hash.to_xml({root: 'oembed'}) }
           format.json { render json: hash }
         end
       end
@@ -95,16 +92,16 @@ class MasterFilesController < ApplicationController
   end
 
   def attach_structure
-    if params[:id].blank? || !MasterFile.exists?(params[:id])
+    if params[:id].blank? || (not MasterFile.exists?(params[:id]))
       flash[:notice] = "MasterFile #{params[:id]} does not exist"
     end
     @masterfile = MasterFile.find(params[:id])
-    unless flash.empty? && MediaObject.exists?(@masterfile.mediaobject_id)
+    unless flash.empty? and  MediaObject.exists?(@masterfile.mediaobject_id)
       flash[:notice] = "MediaObject #{@masterfile.mediaobject_id} does not exist"
     end
     if flash.empty?
       media_object = MediaObject.find(@masterfile.mediaobject_id)
-      authorize! :edit, media_object, message: 'You do not have sufficient privileges to add files'
+      authorize! :edit, media_object, message: "You do not have sufficient privileges to add files"
       structure = request.format.json? ? params[:xml_content] : nil
       if params[:master_file].present? && params[:master_file][:structure].present?
         structure = params[:master_file][:structure].open.read
@@ -114,33 +111,33 @@ class MasterFilesController < ApplicationController
         if validation_errors.empty?
           @masterfile.structuralMetadata.content = structure
         else
-          flash[:error] = validation_errors.map { |e| "Line #{e.line}: #{e}" }
+          flash[:error] = validation_errors.map{|e| "Line #{e.line}: #{e.to_s}" }
         end
       else
         @masterfile.structuralMetadata.delete
       end
       if flash.empty?
-        flash[:error] = 'There was a problem storing the file' unless @masterfile.save
+        flash[:error] = "There was a problem storing the file" unless @masterfile.save
       end
     end
     respond_to do |format|
       format.html { redirect_to edit_media_object_path(@masterfile.mediaobject_id, step: 'structure') }
-      format.json { render json: { structure: structure, flash: flash } }
+      format.json { render json: {structure: structure, flash: flash} }
     end
   end
 
   def attach_captions
     captions = nil
-    if params[:id].blank? || !MasterFile.exists?(params[:id])
+    if params[:id].blank? || (not MasterFile.exists?(params[:id]))
       flash[:notice] = "MasterFile #{params[:id]} does not exist"
     end
     @masterfile = MasterFile.find(params[:id])
-    unless flash.empty? && MediaObject.exists?(@masterfile.mediaobject_id)
+    unless flash.empty? and  MediaObject.exists?(@masterfile.mediaobject_id)
       flash[:notice] = "MediaObject #{@masterfile.mediaobject_id} does not exist"
     end
     if flash.empty?
       media_object = MediaObject.find(@masterfile.mediaobject_id)
-      authorize! :edit, media_object, message: 'You do not have sufficient privileges to add files'
+      authorize! :edit, media_object, message: "You do not have sufficient privileges to add files"
       if params[:master_file].present? && params[:master_file][:captions].present?
         captions = params[:master_file][:captions].open.read
       end
@@ -148,16 +145,16 @@ class MasterFilesController < ApplicationController
         @masterfile.captions.content = captions
         @masterfile.captions.mimeType = params[:master_file][:captions].content_type
         @masterfile.captions.dsLabel = params[:master_file][:captions].original_filename
-        flash[:success] = 'Captions file succesfully added.'
+        flash[:success] = "Captions file succesfully added."
       else
         @masterfile.captions.delete
-        flash[:success] = 'Captions file succesfully removed.'
+        flash[:success] = "Captions file succesfully removed."
       end
       @masterfile.save
     end
     respond_to do |format|
       format.html { redirect_to edit_media_object_path(@masterfile.mediaobject_id, step: 'structure') }
-      format.json { render json: { captions: captions, flash: flash } }
+      format.json { render json: {captions: captions, flash: flash} }
     end
   end
 
@@ -166,30 +163,30 @@ class MasterFilesController < ApplicationController
   # * the File Asset will use RELS-EXT to assert that it's a part of the specified container
   # * the method will redirect to the container object's edit view after saving
   def create
-    if params[:container_id].blank? || !MediaObject.exists?(params[:container_id])
+    if params[:container_id].blank? || (not MediaObject.exists?(params[:container_id]))
       flash[:notice] = "MediaObject #{params[:container_id]} does not exist"
       redirect_to :back
       return
     end
 
     media_object = MediaObject.find(params[:container_id])
-    authorize! :edit, media_object, message: 'You do not have sufficient privileges to add files'
+    authorize! :edit, media_object, message: "You do not have sufficient privileges to add files"
 
-    format_errors = 'The file was not recognized as audio or video - '
+    format_errors = "The file was not recognized as audio or video - "
 
-    if params.key?(:Filedata) && params.key?(:original)
+    if params.has_key?(:Filedata) and params.has_key?(:original)
       @master_files = []
       params[:Filedata].each do |file|
-        if file.size > MasterFile::MAXIMUM_UPLOAD_SIZE
+        if (file.size > MasterFile::MAXIMUM_UPLOAD_SIZE)
           # Use the errors key to signal that it should be a red notice box rather
           # than the default
-          flash[:error] = 'The file you have uploaded is too large'
+          flash[:error] = "The file you have uploaded is too large"
           redirect_to :back
           return
         end
 
         master_file = MasterFile.new
-        master_file.save(validate: false)
+        master_file.save( validate: false )
         master_file.mediaobject = media_object
         master_file.setContent(file)
         master_file.set_workflow(params[:workflow])
@@ -198,7 +195,7 @@ class MasterFilesController < ApplicationController
           flash[:error] = [] if flash[:error].nil?
           error = format_errors
           error << file.original_filename
-          error << ' (' << file.content_type << ')'
+          error << " (" << file.content_type << ")"
           flash[:error].push error
           master_file.destroy
           next
@@ -206,39 +203,40 @@ class MasterFilesController < ApplicationController
           flash[:notice] = create_upload_notice(master_file.file_format)
         end
 
-        if master_file.save
+        unless master_file.save
+          flash[:error] = "There was a problem storing the file"
+        else
           media_object.save(validate: false)
           master_file.process
           @master_files << master_file
-        else
-          flash[:error] = 'There was a problem storing the file'
         end
+
       end
-    elsif params.key?(:selected_files)
+    elsif params.has_key?(:selected_files)
       @master_files = []
       params[:selected_files].each_value do |entry|
-        file_path = URI.parse(entry[:url]).path.tr('+', ' ')
+        file_path = URI.parse(entry[:url]).path.gsub(/\+/,' ')
         master_file = MasterFile.new
-        master_file.save(validate: false)
+        master_file.save( validate: false )
         master_file.mediaobject = media_object
         master_file.setContent(File.open(file_path, 'rb'))
         master_file.set_workflow(params[:workflow])
 
-        if master_file.save
+        unless master_file.save
+          flash[:error] = "There was a problem storing the file"
+        else
           media_object.save(validate: false)
           master_file.process
           @master_files << master_file
-        else
-          flash[:error] = 'There was a problem storing the file'
         end
       end
     else
-      flash[:notice] = 'You must specify a file to upload'
+      flash[:notice] = "You must specify a file to upload"
     end
 
     respond_to do |format|
-      format.html { redirect_to edit_media_object_path(params[:container_id], step: 'file-upload') }
-      format.js {}
+    	format.html { redirect_to edit_media_object_path(params[:container_id], step: 'file-upload') }
+    	format.js { }
     end
   end
 
@@ -247,37 +245,37 @@ class MasterFilesController < ApplicationController
     master_file = MasterFile.find(params[:id])
     media_object = master_file.mediaobject
 
-    authorize! :edit, media_object, message: 'You do not have sufficient privileges to delete files'
+    authorize! :edit, media_object, message: "You do not have sufficient privileges to delete files"
 
     filename = File.basename(master_file.file_location)
     master_file.destroy
 
     media_object.set_media_types!
     media_object.set_duration!
-    media_object.save(validate: false)
+    media_object.save( validate: false )
 
     flash[:notice] = "#{filename} has been deleted from the system"
 
-    redirect_to edit_media_object_path(media_object.pid, step: 'file-upload')
+    redirect_to edit_media_object_path(media_object.pid, step: "file-upload")
   end
 
   def set_frame
     master_file = MasterFile.find(params[:id])
     parent = master_file.mediaobject
 
-    authorize! :read, parent, message: 'You do not have sufficient privileges to edit this file'
-    opts = { type: params[:type], size: params[:size], offset: params[:offset].to_f * 1000, preview: params[:preview] }
+    authorize! :read, parent, message: "You do not have sufficient privileges to edit this file"
+    opts = { :type => params[:type], :size => params[:size], :offset => params[:offset].to_f*1000, :preview => params[:preview] }
     respond_to do |format|
       format.jpeg do
         data = master_file.extract_still(opts)
-        send_data data, filename: "#{opts[:type]}-#{master_file.pid.split(':')[1]}", disposition: :inline, type: 'image/jpeg'
+        send_data data, :filename => "#{opts[:type]}-#{master_file.pid.split(':')[1]}", :disposition => :inline, :type => 'image/jpeg'
       end
       format.all do
         master_file.poster_offset = opts[:offset]
         unless master_file.save
           flash[:notice] = master_file.errors.to_a.join('<br/>')
         end
-        redirect_to edit_media_object_path(parent.pid, step: 'file-upload')
+        redirect_to edit_media_object_path(parent.pid, step: "file-upload")
       end
     end
   end
@@ -285,32 +283,31 @@ class MasterFilesController < ApplicationController
   def get_frame
     master_file = MasterFile.find(params[:id])
     parent = master_file.mediaobject
-    mimeType = 'image/jpeg'
+    mimeType = "image/jpeg"
     content = if params[:offset]
-                authorize! :edit, parent, message: 'You do not have sufficient privileges to view this file'
-                opts = { type: params[:type], size: params[:size], offset: params[:offset].to_f * 1000, preview: true }
-                master_file.extract_still(opts)
-              else
-                authorize! :read, parent, message: 'You do not have sufficient privileges to view this file'
-                ds = master_file.datastreams[params[:type]]
-                mimeType = ds.mimeType
-                ds.content
+      authorize! :edit, parent, message: "You do not have sufficient privileges to view this file"
+      opts = { :type => params[:type], :size => params[:size], :offset => params[:offset].to_f*1000, :preview => true }
+      master_file.extract_still(opts)
+    else
+      authorize! :read, parent, message: "You do not have sufficient privileges to view this file"
+      ds = master_file.datastreams[params[:type]]
+      mimeType = ds.mimeType
+      ds.content
     end
-    send_data content, filename: "#{params[:type]}-#{master_file.pid.split(':')[1]}", disposition: :inline, type: mimeType
+    send_data content, :filename => "#{params[:type]}-#{master_file.pid.split(':')[1]}", :disposition => :inline, :type => mimeType
   end
 
-  protected
-
+protected
   def create_upload_notice(format)
-    text = case format
-           when /^Sound$/
-             'The uploaded content appears to be audio'
-           when /^Moving image$/
-             'The uploaded content appears to be video'
-           else
-             'The uploaded content could not be identified'
-             end
-    text
+    case format
+      when /^Sound$/
+       text = 'The uploaded content appears to be audio';
+      when /^Moving image$/
+       text = 'The uploaded content appears to be video';
+      else
+       text = 'The uploaded content could not be identified';
+      end
+    return text
   end
 
   def ensure_readable_filedata

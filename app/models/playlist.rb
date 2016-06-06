@@ -13,8 +13,8 @@ class Playlist < ActiveRecord::Base
   accepts_nested_attributes_for :items, allow_destroy: true
 
   # visibility
-  PUBLIC = 'public'.freeze
-  PRIVATE = 'private'.freeze
+  PUBLIC = 'public'
+  PRIVATE = 'private'
 
   # Default values to be applied after initialization
   def default_values

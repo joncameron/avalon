@@ -1,20 +1,21 @@
 # Copyright 2011-2015, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software distributed
+# 
+# Unless required by applicable law or agreed to in writing, software distributed 
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-#   CONDITIONS OF ANY KIND, either express or implied. See the License for the
+#   CONDITIONS OF ANY KIND, either express or implied. See the License for the 
 #   specific language governing permissions and limitations under the License.
 # ---  END LICENSE_HEADER BLOCK  ---
 
 require 'spec_helper'
 
 describe Users::OmniauthCallbacksController do
+
   context 'lti' do
     let(:lti_fixtures) { YAML.load(File.read(File.expand_path('../../config/lti_params.yml', __FILE__))) }
     let(:lti_config)   { lti_fixtures[:config]                               }
@@ -26,7 +27,7 @@ describe Users::OmniauthCallbacksController do
     let(:course_name)  { foo_hash[foo_config[:context_name]]                 }
 
     before :each do
-      hide_const('Avalon::GROUP_LDAP')
+      hide_const("Avalon::GROUP_LDAP")
       allow_any_instance_of(IMS::LTI::ToolProvider).to receive(:valid_request!) { true }
       @old_config = Devise.omniauth_configs[:lti].options[:consumers]
       Devise.omniauth_configs[:lti].options[:consumers] = Devise.omniauth_configs[:lti].strategy[:consumers] = lti_config
@@ -68,12 +69,12 @@ describe Users::OmniauthCallbacksController do
         post '/users/auth/lti/callback', foo_hash
       end
 
-      it 'should have lti_group' do
+      it "should have lti_group" do
         expect(subject).not_to be_empty
         expect(subject[:lti_group]).not_to be_empty
       end
 
-      it 'should not be a full login' do
+      it "should not be a full login" do
         expect(subject).not_to be_empty
         expect(subject[:full_login]).to be_falsey
       end
@@ -86,14 +87,14 @@ describe Users::OmniauthCallbacksController do
         allow_any_instance_of(Users::OmniauthCallbacksController).to receive(:user_session) { subject }
         foo_hash.delete('lis_person_sourcedid')
         post '/users/auth/lti/callback', foo_hash
-      end
-
-      it 'should not log anyone in' do
+      end      
+      
+      it "should not log anyone in" do
         expect(subject).to be_empty
       end
-
-      it 'flashes an error message' do
-        expect(flash[:error]).to match(%r{please contact us at <a href="mailto:avalon-support@example.edu">avalon-support@example.edu</a>})
+      
+      it "flashes an error message" do
+        expect(flash[:error] ).to match(%r{please contact us at <a href="mailto:avalon-support@example.edu">avalon-support@example.edu</a>})
       end
     end
 
@@ -103,14 +104,14 @@ describe Users::OmniauthCallbacksController do
       before :each do
         allow_any_instance_of(Users::OmniauthCallbacksController).to receive(:user_session) { user_session }
       end
-      it 'should redirect to the external group facet applied for the lti group' do
+      it "should redirect to the external group facet applied for the lti group" do
         expect(subject).to redirect_to catalog_index_path('f[read_access_virtual_group_ssim][]' => user_session[:lti_group])
       end
       context 'when there are other external groups' do
         before do
           allow_any_instance_of(User).to receive(:ldap_groups) { [Faker::Lorem.word] }
         end
-        it 'should redirect to the external group facet applied for the lti group' do
+        it "should redirect to the external group facet applied for the lti group" do
           expect(subject).to redirect_to catalog_index_path('f[read_access_virtual_group_ssim][]' => user_session[:lti_group])
         end
       end

@@ -4,7 +4,7 @@ Devise.setup do |config|
   # ==> Mailer Configuration
   # Configure the e-mail address which will be shown in Devise::Mailer,
   # note that it will be overwritten if you use your own mailer class with default "from" parameter.
-  config.mailer_sender = 'please-change-me-at-config-initializers-devise@example.com'
+  config.mailer_sender = "please-change-me-at-config-initializers-devise@example.com"
 
   # Configure the class responsible to send e-mails.
   # config.mailer = "Devise::Mailer"
@@ -23,7 +23,7 @@ Devise.setup do |config|
   # session. If you need permissions, you should implement that in a before filter.
   # You can also supply a hash where the value is a boolean determining whether
   # or not authentication should be aborted when the value is not present.
-  config.authentication_keys = [:username]
+  config.authentication_keys = [ :username ]
 
   # Configure parameters from the request object used for authentication. Each entry
   # given should be a request method and it will automatically be passed to the
@@ -35,12 +35,12 @@ Devise.setup do |config|
   # Configure which authentication keys should be case-insensitive.
   # These keys will be downcased upon creating or modifying a user and when used
   # to authenticate or find a user. Default is :email.
-  config.case_insensitive_keys = [:username]
+  config.case_insensitive_keys = [ :username ]
 
   # Configure which authentication keys should have whitespace stripped.
   # These keys will have whitespace before and after removed upon creating or
   # modifying a user and when used to authenticate or find a user. Default is :email.
-  config.strip_whitespace_keys = [:username]
+  config.strip_whitespace_keys = [ :username ]
 
   # Tell if authentication through request.params is enabled. True by default.
   # config.params_authenticatable = true
@@ -94,7 +94,7 @@ Devise.setup do |config|
 
   # If true, uses the password salt as remember token. This should be turned
   # to false if you are not using database authenticatable.
-  # config.use_salt_as_remember_token = true
+  #config.use_salt_as_remember_token = true
 
   # Options to be passed to the created cookie. For instance, you can set
   # :secure => true in order to force SSL only cookies.
@@ -200,7 +200,7 @@ Devise.setup do |config|
 
   Avalon::Authentication::Providers.each do |provider|
     if provider[:provider] == :lti
-      provider[:params][:consumers] = Avalon::Lti::Configuration
+      provider[:params].merge!({consumers: Avalon::Lti::Configuration})
     end
     config.omniauth provider[:provider], provider[:params]
   end
@@ -214,12 +214,12 @@ Devise.setup do |config|
   #   manager.default_strategies(:scope => :user).unshift :some_external_strategy
   # end
 
-  #  config.cas_base_url = "https://cas.iu.edu/cas/"
+#  config.cas_base_url = "https://cas.iu.edu/cas/"
 
   # you can override these if you need to, but cas_base_url is usually enough
-  #  config.cas_login_url = "https://cas.iu.edu/cas/login?cassvc=ANY"
-  #  config.cas_logout_url = "https://cas.iu.edu/cas/logout"
-  #  config.cas_validate_url = "https://cas.iu.edu/cas/validate?cassvc=ANY"
+#  config.cas_login_url = "https://cas.iu.edu/cas/login?cassvc=ANY"
+#  config.cas_logout_url = "https://cas.iu.edu/cas/logout"
+#  config.cas_validate_url = "https://cas.iu.edu/cas/validate?cassvc=ANY"
 
   # The CAS specification allows for the passing of a follow URL to be displayed when
   # a user logs out on the CAS server. RubyCAS-Server also supports redirecting to a
@@ -233,6 +233,6 @@ Devise.setup do |config|
   # By default, devise_cas_authenticatable will create users.  If you would rather
   # require user records to already exist locally before they can authenticate via
   # CAS, uncomment the following line.
-  # config.cas_create_user = false
+  # config.cas_create_user = false  
   OmniAuth.config.logger = Rails.logger
 end

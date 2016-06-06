@@ -1,7 +1,7 @@
 require 'acts_as_list'
 
 class PlaylistItem < ActiveRecord::Base
-  #  after_save :recount_folders
+#  after_save :recount_folders
   belongs_to :playlist, touch: true
   validates :playlist, presence: true
   acts_as_list scope: :playlist

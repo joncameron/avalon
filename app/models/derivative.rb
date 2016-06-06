@@ -1,14 +1,14 @@
 # Copyright 2011-2015, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-#
+# 
 # You may obtain a copy of the License at
-#
+# 
 # http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software distributed
+# 
+# Unless required by applicable law or agreed to in writing, software distributed 
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-#   CONDITIONS OF ANY KIND, either express or implied. See the License for the
+#   CONDITIONS OF ANY KIND, either express or implied. See the License for the 
 #   specific language governing permissions and limitations under the License.
 # ---  END LICENSE_HEADER BLOCK  ---
 
@@ -18,7 +18,7 @@ class Derivative < ActiveFedora::Base
   include ActiveFedora::Associations
   include VersionableModel
 
-  belongs_to :masterfile, class_name: 'MasterFile', property: :is_derivation_of
+  belongs_to :masterfile, :class_name=>'MasterFile', :property=>:is_derivation_of
 
   has_model_version 'R3'
 
@@ -29,7 +29,7 @@ class Derivative < ActiveFedora::Base
   # The only meaningful value at the moment is the url, which points to
   # the stream location. The other two are just stored until a migration
   # strategy is required.
-  has_metadata name: 'descMetadata', type: CachingSimpleDatastream.create(self), autocreate: true do |d|
+  has_metadata name: "descMetadata", :type => CachingSimpleDatastream.create(self), autocreate: true do |d|
     d.field :location_url, :string
     d.field :hls_url, :string
     d.field :duration, :string
@@ -52,9 +52,9 @@ class Derivative < ActiveFedora::Base
     super(attrs)
   end
 
-  def self.from_output(dists, managed = true)
-    # output is an array of 1 or more distributions of the same derivative (e.g. file and HLS segmented file)
-    hls_output = dists.delete(dists.find { |o| o[:url].ends_with?('m3u8') || (o[:hls_url].present? && o[:hls_url].ends_with?('m3u8')) })
+  def self.from_output(dists, managed=true)
+    #output is an array of 1 or more distributions of the same derivative (e.g. file and HLS segmented file)
+    hls_output = dists.delete(dists.find {|o| o[:url].ends_with? "m3u8" or ( o[:hls_url].present? and o[:hls_url].ends_with? "m3u8" ) })
     output = dists.first || hls_output
 
     derivative = Derivative.new
@@ -81,14 +81,14 @@ class Derivative < ActiveFedora::Base
   end
 
   def set_streaming_locations!
-    if managed
+    if !!self.managed
       path = URI.parse(absolute_location).path
-      self.location_url = Avalon::StreamMapper.map(path, 'rtmp', format)
-      self.hls_url      = Avalon::StreamMapper.map(path, 'http', format)
+      self.location_url = Avalon::StreamMapper.map(path,'rtmp',self.format)
+      self.hls_url      = Avalon::StreamMapper.map(path,'http',self.format)
     end
     self
   end
-
+  
   def absolute_location
     derivativeFile.location
   end
@@ -99,39 +99,42 @@ class Derivative < ActiveFedora::Base
     derivativeFile.location
   end
 
-  def tokenized_url(token, mobile = false)
-    # uri = URI.parse(url.first)
+  def tokenized_url(token, mobile=false)
+    #uri = URI.parse(url.first)
     uri = streaming_url(mobile)
-    "#{uri}?token=#{token}".html_safe
+    "#{uri.to_s}?token=#{token}".html_safe
   end
 
-  def streaming_url(is_mobile = false)
-    is_mobile ? hls_url : location_url
+  def streaming_url(is_mobile=false)
+    is_mobile ? self.hls_url : self.location_url
   end
 
   def format
-    if !encoding.video.empty?
-      'video'
-    elsif !encoding.audio.empty?
-      'audio'
-    else
-      'other'
+    case
+      when (not encoding.video.empty?)
+        "video"
+      when (not encoding.audio.empty?)
+        "audio"
+      else
+        "other"
     end
   end
 
-  def to_solr(solr_doc = {})
+  def to_solr(solr_doc = Hash.new)
     super(solr_doc)
     solr_doc['stream_path_ssi'] = location_url.split(/:/).last if location_url.present?
     solr_doc
   end
 
   private
+    def retract_distributed_files!
+      begin
+        encode = masterfile.encoder_class.find(masterfile.workflow_id)
+        encode.remove_output!(track_id) if track_id.present?
+        encode.remove_output!(hls_track_id) if hls_track_id.present? && track_id != hls_track_id
+      rescue Exception => e
+        logger.warn "Error deleting derivative: #{e.message}"
+      end
+    end
 
-  def retract_distributed_files!
-    encode = masterfile.encoder_class.find(masterfile.workflow_id)
-    encode.remove_output!(track_id) if track_id.present?
-    encode.remove_output!(hls_track_id) if hls_track_id.present? && track_id != hls_track_id
-  rescue Exception => e
-    logger.warn "Error deleting derivative: #{e.message}"
-  end
-end
+end 

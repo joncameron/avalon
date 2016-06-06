@@ -5,27 +5,15 @@ class AvalonAnnotation < ActiveAnnotations::Annotation
   after_save :post_to_solr
   after_destroy :delete_from_solr
 
-  alias comment content
-  alias comment= content=
+  alias_method :comment, :content
+  alias_method :comment=, :content=
 
-  alias title label
-  alias title= label=
+  alias_method :title, :label
+  alias_method :title=, :label=
 
   validates :master_file, :title, :start_time, presence: true
-  validates :start_time, numericality: { greater_than_or_equal_to: 0, message: 'must be greater than or equal to 0' }
-  validates :end_time, numericality: { greater_than: proc do |a|
-    begin
-                  Float(a.start_time)
-                rescue
-                  0
-                end
-  end, less_than_or_equal_to: proc do |a|
-                                begin
-                                                                      a.master_file.duration.to_f
-                                                                    rescue
-                                                                      -1
-                                                                    end
-                              end, message: 'must be between start time and end of section' }
+  validates :start_time, numericality: { greater_than_or_equal_to: 0, message: "must be greater than or equal to 0"}
+  validates :end_time, numericality: { greater_than: Proc.new {|a| Float(a.start_time) rescue 0}, less_than_or_equal_to: Proc.new {|a| a.master_file.duration.to_f rescue -1}, message: "must be between start time and end of section"}
 
   after_initialize do
     selector_default!
@@ -37,7 +25,7 @@ class AvalonAnnotation < ActiveAnnotations::Annotation
   def to_solr
     solr_hash = {}
     # TODO: User Key via parsing of User URI
-    # byebug
+    #byebug
     solr_hash[:id] = solr_id
     solr_hash[:title_ssi] = title
     solr_hash[:master_file_uri_ssi] = master_file.rdf_uri
@@ -80,24 +68,24 @@ class AvalonAnnotation < ActiveAnnotations::Annotation
 
   # Sets the default selector to a start time of 0 and an end time of the master file length
   def selector_default!
-    self.start_time = 0 if start_time.nil?
-    if end_time.nil?
-      self.end_time = if master_file.present? && master_file.duration.present?
-                        master_file.duration
-                      else
-                        1
-                      end
+    self.start_time = 0 if self.start_time.nil?
+    if self.end_time.nil?
+      if master_file.present? && master_file.duration.present?
+        self.end_time = master_file.duration
+      else
+        self.end_time = 1
+      end
     end
   end
 
   # Set the default title to be the label of the master_file
   def title_default!
-    self.title = master_file.embed_title if title.nil? && master_file.present?
+    self.title = master_file.embed_title if self.title.nil? && master_file.present?
   end
 
   # Sets the class variable @master_file by finding the master referenced in the source uri
   def master_file
-    @master_file ||= MasterFile.find(source.split('/').last) if source
+    @master_file ||= MasterFile.find(self.source.split('/').last) if self.source
   end
 
   def master_file=(value)
@@ -115,7 +103,8 @@ class AvalonAnnotation < ActiveAnnotations::Annotation
   end
 
   def duration
-    duration = (end_time - start_time) / 1000
-    Time.at(duration).utc.strftime(duration < 3600 ? '%M:%S' : '%H:%M:%S')
+    duration = (end_time-start_time)/1000
+    Time.at(duration).utc.strftime(duration<3600?'%M:%S':'%H:%M:%S')
   end
+
 end

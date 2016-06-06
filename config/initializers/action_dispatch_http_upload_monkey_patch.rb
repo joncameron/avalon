@@ -4,7 +4,6 @@ module ActionDispatch
       def closed?
         @tempfile.closed?
       end
-
       def close
         @tempfile.close
       end

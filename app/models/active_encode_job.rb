@@ -21,7 +21,7 @@ module ActiveEncodeJob
   end
 
   class Update < Struct.new(:master_file_id)
-    include ActiveEncodeJob::Core # I'm not sure if the error callback is really makes sense here!
+    include ActiveEncodeJob::Core  #I'm not sure if the error callback is really makes sense here!
     def perform
       Delayed::Worker.logger.info "Updating encode progress for MasterFile: #{master_file_id}"
       mf = MasterFile.find(master_file_id)

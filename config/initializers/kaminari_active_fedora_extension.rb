@@ -1,28 +1,28 @@
 module Kaminari
-  #  module ActiveFedoraExtension
-  #    extend ActiveSupport::Concern
-  #
-  #    module ClassMethods
-  #      # Future subclasses will pick up the model extension
-  #      def inherited(kls) #:nodoc:
-  #        super
-  #        kls.send(:include, Kaminari::ActiveFedoraModelExtension) if kls.superclass == ::ActiveFedora::Base
-  #      end
-  #    end
-  #
-  #    included do
-  #      # Existing subclasses pick up the model extension as well
-  #      self.descendants.each do |kls|
-  #        kls.send(:include, Kaminari::ActiveFedoraModelExtension) if kls.superclass == ::ActiveFedora::Base
-  #      end
-  #    end
-  #  end
-  #
+#  module ActiveFedoraExtension
+#    extend ActiveSupport::Concern
+#
+#    module ClassMethods
+#      # Future subclasses will pick up the model extension
+#      def inherited(kls) #:nodoc:
+#        super
+#        kls.send(:include, Kaminari::ActiveFedoraModelExtension) if kls.superclass == ::ActiveFedora::Base
+#      end
+#    end
+#
+#    included do
+#      # Existing subclasses pick up the model extension as well
+#      self.descendants.each do |kls|
+#        kls.send(:include, Kaminari::ActiveFedoraModelExtension) if kls.superclass == ::ActiveFedora::Base
+#      end
+#    end
+#  end
+#
   module ActiveFedoraModelExtension
     extend ActiveSupport::Concern
 
     included do
-      send(:include, Kaminari::ConfigurationMethods)
+      self.send(:include, Kaminari::ConfigurationMethods)
 
       # Fetch the values at the specified page number
       #   Model.page(5)
@@ -47,18 +47,18 @@ module Kaminari
       super
     end
 
-    def total_count(_column_name = :all, options = {}) #:nodoc:
+    def total_count(column_name = :all, options = {}) #:nodoc:
       # #count overrides the #select which could include generated columns referenced in #order, so skip #order here, where it's irrelevant to the result anyway
       @total_count ||= begin
-        #        c = except(:offset, :limit, :order)
+#        c = except(:offset, :limit, :order)
 
         # Remove includes only if they are irrelevant
-        #       c = c.except(:includes) unless references_eager_loaded_tables?
+ #       c = c.except(:includes) unless references_eager_loaded_tables?
 
         # Rails 4.1 removes the `options` argument from AR::Relation#count
-        #       args = [column_name]
+ #       args = [column_name]
         args = []
-        args << options # if ActiveRecord::VERSION::STRING < '4.1.0'
+        args << options #if ActiveRecord::VERSION::STRING < '4.1.0'
 
         # .group returns an OrderdHash that responds to #count
         c = count(*args)
@@ -99,7 +99,7 @@ module Kaminari
         total_pages_count
       end
     rescue FloatDomainError
-      raise ZeroPerPageOperation, 'The number of total pages was incalculable. Perhaps you called .per(0)?'
+      raise ZeroPerPageOperation, "The number of total pages was incalculable. Perhaps you called .per(0)?"
     end
   end
 end

@@ -13,11 +13,11 @@
 # ---  END LICENSE_HEADER BLOCK  ---
 
 # This file is copied to spec/ when you run 'rails generate rspec:install'
-ENV['RAILS_ENV'] = 'test'
+ENV["RAILS_ENV"] = 'test'
 require 'simplecov'
 SimpleCov.start 'rails'
 
-require File.expand_path('../../config/environment', __FILE__)
+require File.expand_path("../../config/environment", __FILE__)
 require 'rspec/rails'
 require 'rspec/autorun'
 require 'equivalent-xml/rspec_matchers'
@@ -28,16 +28,16 @@ require 'fileutils'
 require 'tmpdir'
 require 'coveralls'
 
-# Configure coveralls for CI builds
+#Configure coveralls for CI builds
 Coveralls.wear!('rails')
 
 # Requires supporting ruby files with custom matchers and macros, etc,
 # in spec/support/ and its subdirectories.
-Dir[Rails.root.join('spec/support/**/*.rb')].each { |f| require f }
-Dir[Rails.root.join('spec/models/shared_examples/**/*.rb')].each { |f| require f }
+Dir[Rails.root.join("spec/support/**/*.rb")].each {|f| require f}
+Dir[Rails.root.join("spec/models/shared_examples/**/*.rb")].each {|f| require f}
 
 Avalon::GROUP_LDAP = Net::LDAP.new unless defined?(Avalon::GROUP_LDAP)
-Avalon::GROUP_LDAP_TREE = 'ou=Test,dc=avalonmediasystem,dc=org'.freeze unless defined?(Avalon::GROUP_LDAP_TREE)
+Avalon::GROUP_LDAP_TREE = 'ou=Test,dc=avalonmediasystem,dc=org' unless defined?(Avalon::GROUP_LDAP_TREE)
 
 RSpec.configure do |config|
   # ## Mock Framework
@@ -80,8 +80,8 @@ RSpec.configure do |config|
     ActiveEncode::Base.engine_adapter = :test
 
     server_options = { host: 'test.host', port: nil }
-    Rails.application.routes.default_url_options.merge!(server_options)
-    ActionMailer::Base.default_url_options.merge!(server_options)
+    Rails.application.routes.default_url_options.merge!( server_options )
+    ActionMailer::Base.default_url_options.merge!( server_options )
     ApplicationController.default_url_options = server_options
   end
 
@@ -103,9 +103,9 @@ RSpec.configure do |config|
   config.after(:each) do
     Rails.cache.clear
     DatabaseCleaner.clean
-  end
+   end
 
-  config.include Devise::TestHelpers, type: :controller
-  config.include ControllerMacros, type: :controller
+  config.include Devise::TestHelpers, :type => :controller
+  config.include ControllerMacros, :type => :controller
   config.include FixtureMacros
 end

@@ -19,6 +19,8 @@ require 'avalon/file_resolver'
 require 'avalon/m3u8_reader'
 
 class MasterFile < ActiveFedora::Base
+
+
   include ActiveFedora::Associations
   include Hydra::ModelMethods
   include Hydra::AccessControls::Permissions
@@ -27,14 +29,14 @@ class MasterFile < ActiveFedora::Base
   include Permalink
   include VersionableModel
 
-  has_metadata name: 'structuralMetadata', type: StructuralMetadata
+  has_metadata name: "structuralMetadata", :type => StructuralMetadata
 
-  WORKFLOWS = ['fullaudio', 'avalon', 'avalon-skip-transcoding', 'avalon-skip-transcoding-audio'].freeze
+  WORKFLOWS = ['fullaudio', 'avalon', 'avalon-skip-transcoding', 'avalon-skip-transcoding-audio']
 
-  belongs_to :mediaobject, class_name: 'MediaObject', property: :is_part_of
-  has_many :derivatives, class_name: 'Derivative', property: :is_derivation_of
+  belongs_to :mediaobject, :class_name=>'MediaObject', :property=>:is_part_of
+  has_many :derivatives, :class_name=>'Derivative', :property=>:is_derivation_of
 
-  has_metadata name: 'descMetadata', type: CachingSimpleDatastream.create(self) do |d|
+  has_metadata name: 'descMetadata', :type => CachingSimpleDatastream.create(self) do |d|
     d.field :file_location, :string
     d.field :file_checksum, :string
     d.field :file_size, :string
@@ -48,7 +50,7 @@ class MasterFile < ActiveFedora::Base
     d.field :physical_description, :string
   end
 
-  has_metadata name: 'mhMetadata', type: CachingSimpleDatastream.create(self) do |d|
+  has_metadata name: 'mhMetadata', :type => CachingSimpleDatastream.create(self) do |d|
     d.field :workflow_id, :string
     d.field :workflow_name, :string
     d.field :percent_complete, :string
@@ -70,7 +72,7 @@ class MasterFile < ActiveFedora::Base
   has_file_datastream name: 'poster'
   has_file_datastream name: 'captions'
 
-  validates :workflow_name, presence: true, inclusion: { in: proc { WORKFLOWS } }
+  validates :workflow_name, presence: true, inclusion: { in: Proc.new{ WORKFLOWS } }
   validates_each :date_digitized do |record, attr, value|
     unless value.nil?
       begin
@@ -81,11 +83,11 @@ class MasterFile < ActiveFedora::Base
     end
   end
   validates_each :poster_offset, :thumbnail_offset do |record, attr, value|
-    unless value.nil? || value.to_i.between?(0, record.duration.to_i)
+    unless value.nil? or value.to_i.between?(0,record.duration.to_i)
       record.errors.add attr, "must be between 0 and #{record.duration}"
     end
   end
-  # validates :file_format, presence: true, exclusion: { in: ['Unknown'], message: "The file was not recognized as audio or video." }
+  #validates :file_format, presence: true, exclusion: { in: ['Unknown'], message: "The file was not recognized as audio or video." }
 
   has_model_version 'R3'
   before_save :update_stills_from_offset!
@@ -102,43 +104,47 @@ class MasterFile < ActiveFedora::Base
   # 250 MB is the file limit for now
   MAXIMUM_UPLOAD_SIZE = (2**20) * 250
 
-  AUDIO_TYPES = ['audio/vnd.wave', 'audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/wav', 'audio/x-wav'].freeze
-  VIDEO_TYPES = ['application/mp4', 'video/mpeg', 'video/mpeg2', 'video/mp4', 'video/quicktime', 'video/avi'].freeze
-  UNKNOWN_TYPES = ['application/octet-stream', 'application/x-upload-data'].freeze
-  QUALITY_ORDER = { 'high' => 1, 'medium' => 2, 'low' => 3 }.freeze
-  END_STATES = %w(CANCELLED COMPLETED FAILED).freeze
+  AUDIO_TYPES = ["audio/vnd.wave", "audio/mpeg", "audio/mp3", "audio/mp4", "audio/wav", "audio/x-wav"]
+  VIDEO_TYPES = ["application/mp4", "video/mpeg", "video/mpeg2", "video/mp4", "video/quicktime", "video/avi"]
+  UNKNOWN_TYPES = ["application/octet-stream", "application/x-upload-data"]
+  QUALITY_ORDER = { "high" => 1, "medium" => 2, "low" => 3 }
+  END_STATES = ['CANCELLED', 'COMPLETED', 'FAILED']
 
-  EMBED_SIZE = { medium: 600 }.freeze
+  EMBED_SIZE = {:medium => 600}
   AUDIO_HEIGHT = 50
 
   def save_parent
-    mediaobject.save(validate: false) unless mediaobject.nil?
+    unless mediaobject.nil?
+      mediaobject.save(validate: false)
+    end
   end
 
   def setContent(file)
     case file
-    when Hash # Multiple files for pre-transcoded derivatives
-      saveOriginal((file.key?('quality-high') && File.file?(file['quality-high'])) ? file['quality-high'] : (file.key?('quality-medium') && File.file?(file['quality-medium'])) ? file['quality-medium'] : file.values[0])
-      file.each_value { |f| f.close unless f.closed? }
-    when ActionDispatch::Http::UploadedFile # Web upload
+    when Hash #Multiple files for pre-transcoded derivatives
+      saveOriginal( (file.has_key?('quality-high') && File.file?( file['quality-high'] )) ? file['quality-high'] : (file.has_key?('quality-medium') && File.file?( file['quality-medium'] )) ? file['quality-medium'] : file.values[0] )
+      file.each_value {|f| f.close unless f.closed? }
+    when ActionDispatch::Http::UploadedFile #Web upload
       saveOriginal(file, file.original_filename)
-    else # Batch or dropbox
+    else #Batch or dropbox
       saveOriginal(file)
     end
     reloadTechnicalMetadata!
   end
 
-  def set_workflow(workflow = nil)
+  def set_workflow( workflow  = nil )
     if workflow == 'skip_transcoding'
-      workflow = case file_format
+      workflow = case self.file_format
                  when 'Moving image'
-                   'avalon-skip-transcoding'
+                  'avalon-skip-transcoding'
                  when 'Sound'
-                   'avalon-skip-transcoding-audio'
+                  'avalon-skip-transcoding-audio'
+                 else
+                  nil
                  end
-    elsif file_format == 'Sound'
+    elsif self.file_format == 'Sound'
       workflow = 'fullaudio'
-    elsif file_format == 'Moving image'
+    elsif self.file_format == 'Moving image'
       workflow = 'avalon'
     else
       logger.warn "Could not find workflow for: #{self}"
@@ -146,61 +152,61 @@ class MasterFile < ActiveFedora::Base
     self.workflow_name = workflow
   end
 
-  alias _mediaobject= mediaobject=
+  alias_method :'_mediaobject=', :'mediaobject='
 
   # This requires the MasterFile having an actual pid
   def mediaobject=(mo)
     # Removes existing association
-    if mediaobject.present?
-      mediaobject.parts_with_order_remove self
-      mediaobject.parts -= [self]
+    if self.mediaobject.present?
+      self.mediaobject.parts_with_order_remove self
+      self.mediaobject.parts -= [self]
     end
 
-    self._mediaobject = mo
-    unless mediaobject.nil?
-      mediaobject.parts_with_order += [self]
-      mediaobject.parts += [self]
+    self._mediaobject=(mo)
+    unless self.mediaobject.nil?
+      self.mediaobject.parts_with_order += [self]
+      self.mediaobject.parts += [self]
     end
   end
 
   def destroy
-    mo = mediaobject
+    mo = self.mediaobject
     self.mediaobject = nil
 
     # Stops all processing
     if workflow_id.present? && !finished_processing?
       encoder_class.find(workflow_id).cancel!
     end
-    derivatives.map(&:destroy)
+    self.derivatives.map(&:destroy)
 
     clear_association_cache
 
     super
 
-    # Only save the media object if the master file was successfully deleted
+    #Only save the media object if the master file was successfully deleted
     if mo.nil?
-      logger.warn 'MasterFile has no owning MediaObject to update upon deletion'
+      logger.warn "MasterFile has no owning MediaObject to update upon deletion"
     else
       mo.save(validate: false)
     end
   end
 
-  def process(file = nil)
-    raise 'MasterFile is already being processed' if status_code.present? && !finished_processing?
+  def process file=nil
+    raise "MasterFile is already being processed" if status_code.present? && !finished_processing?
 
-    # Build hash for single file skip transcoding
-    if !file.is_a?(Hash) && (workflow_name == 'avalon-skip-transcoding' || workflow_name == 'avalon-skip-transcoding-audio')
-      file = { 'quality-high' => File.new(file_location) }
+    #Build hash for single file skip transcoding
+    if !file.is_a?(Hash) && (self.workflow_name == 'avalon-skip-transcoding' || self.workflow_name == 'avalon-skip-transcoding-audio')
+      file = {'quality-high' => File.new(file_location)}
     end
 
     input = if file.is_a? Hash
-              file_dup = file.dup
-              file_dup.each_pair { |quality, f| file_dup[quality] = 'file://' + URI.escape(File.realpath(f.to_path)) }
-            else
-              'file://' + URI.escape(file_location)
+      file_dup = file.dup
+      file_dup.each_pair {|quality, f| file_dup[quality] = "file://" + URI.escape(File.realpath(f.to_path))}
+    else
+      "file://" + URI.escape(file_location)
     end
 
-    Delayed::Job.enqueue ActiveEncodeJob::Create.new(id, encoder_class.new(input, preset: workflow_name))
+    Delayed::Job.enqueue ActiveEncodeJob::Create.new(self.id, encoder_class.new(input, preset: self.workflow_name))
   end
 
   def status?(value)
@@ -215,15 +221,14 @@ class MasterFile < ActiveFedora::Base
     status?('COMPLETED')
   end
 
-  def stream_details(token, host = nil)
-    flash = []
-    hls = []
+  def stream_details(token,host=nil)
+    flash, hls = [], []
     ActiveFedora::SolrService.reify_solr_results(derivatives.load_from_solr, load_from_solr: true).each do |d|
       common = { quality: d.encoding.quality.first,
                  mimetype: d.encoding.mime_type.first,
                  format: d.format }
-      flash << common.merge(url: Avalon.rehost(d.tokenized_url(token, false), host))
-      hls << common.merge(url: Avalon.rehost(d.tokenized_url(token, true), host))
+      flash << common.merge(url: Avalon.rehost(d.tokenized_url(token, false),host))
+      hls << common.merge(url: Avalon.rehost(d.tokenized_url(token, true),host))
     end
 
     # Sorts the streams in order of quality, note: Hash order only works in Ruby 1.9 or later
@@ -232,15 +237,15 @@ class MasterFile < ActiveFedora::Base
 
     poster_path = Rails.application.routes.url_helpers.poster_master_file_path(self) unless poster.new?
     captions_path = Rails.application.routes.url_helpers.captions_master_file_path(self) unless captions.empty?
-    captions_format = captions.mimeType
+    captions_format = self.captions.mimeType
 
     # Returns the hash
     {
-      id: pid,
+      id: self.pid,
       label: label,
       is_video: is_video?,
       poster_image: poster_path,
-      embed_code: embed_code(EMBED_SIZE[:medium], urlappend: '/embed'),
+      embed_code: embed_code(EMBED_SIZE[:medium], {urlappend: '/embed'}),
       stream_flash: flash,
       stream_hls: hls,
       captions_path: captions_path,
@@ -251,26 +256,28 @@ class MasterFile < ActiveFedora::Base
   end
 
   def embed_title
-    "#{mediaobject.title} - #{label || file_location.split('/').last}"
+    "#{ self.mediaobject.title } - #{ self.label || self.file_location.split( "/" ).last }"
   end
 
   def embed_code(width, permalink_opts = {})
-    url = if permalink
-            permalink(permalink_opts)
-          else
-            embed_master_file_path(pid, only_path: false, protocol: '//')
-          end
-    height = is_video? ? (width / display_aspect_ratio.to_f).floor : AUDIO_HEIGHT
-    "<iframe title=\"#{embed_title}\" src=\"#{url}\" width=\"#{width}\" height=\"#{height}\" frameborder=\"0\" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>"
-  rescue
-    ''
+    begin
+      if self.permalink
+        url = self.permalink(permalink_opts)
+      else
+        url = embed_master_file_path(self.pid, only_path: false, protocol: '//')
+      end
+      height = is_video? ? (width/display_aspect_ratio.to_f).floor : AUDIO_HEIGHT
+      "<iframe title=\"#{ embed_title }\" src=\"#{url}\" width=\"#{width}\" height=\"#{height}\" frameborder=\"0\" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>"
+    rescue
+      ""
+    end
   end
 
   def is_video?
-    file_format != 'Sound'
+    self.file_format != "Sound"
   end
 
-  def sort_streams(array)
+  def sort_streams array
     array.sort { |x, y| QUALITY_ORDER[x[:quality]] <=> QUALITY_ORDER[y[:quality]] }
   end
 
@@ -279,7 +286,7 @@ class MasterFile < ActiveFedora::Base
   end
 
   def update_progress!
-    update_progress_with_encode!(encoder_class.find(workflow_id))
+    update_progress_with_encode!(encoder_class.find(self.workflow_id))
   end
 
   def update_progress_with_encode!(encode)
@@ -291,15 +298,15 @@ class MasterFile < ActiveFedora::Base
     self.duration = encode.tech_metadata[:duration] if encode.tech_metadata[:duration]
     self.file_checksum = encode.tech_metadata[:checksum] if encode.tech_metadata[:checksum]
     self.workflow_id = encode.id
-    # self.workflow_name = encode.options[:preset] #MH can switch to an error workflow
+    #self.workflow_name = encode.options[:preset] #MH can switch to an error workflow
 
-    case status_code
-    when 'COMPLETED'
+    case self.status_code
+    when"COMPLETED"
       self.percent_complete = encode.percent_complete.to_s
       self.percent_succeeded = encode.percent_complete.to_s
       self.percent_failed = 0.to_s
-      update_progress_on_success!(encode)
-    when 'FAILED'
+      self.update_progress_on_success!(encode)
+    when "FAILED"
       self.percent_complete = encode.percent_complete.to_s
       self.percent_succeeded = encode.percent_complete.to_s
       self.percent_failed = (100 - encode.percent_complete).to_s
@@ -308,63 +315,65 @@ class MasterFile < ActiveFedora::Base
   end
 
   def update_progress_on_success!(encode)
-    # Set date ingested to now if it wasn't preset (by batch, for example)
-    # TODO pull this from the encode
+    #Set date ingested to now if it wasn't preset (by batch, for example)
+    #TODO pull this from the encode
     self.date_digitized ||= Time.now.utc.iso8601
 
     update_derivatives(encode.output)
     run_hook :after_processing
   end
 
-  def update_derivatives(output, managed = true)
-    outputs_by_quality = output.group_by { |o| o[:label] }
+  def update_derivatives(output,managed=true)
+    outputs_by_quality = output.group_by {|o| o[:label]}
 
     outputs_by_quality.each_pair do |quality, outputs|
-      existing = derivatives.to_a.find { |d| d.encoding.quality.first == quality }
-      d = Derivative.from_output(outputs, managed)
+      existing = derivatives.to_a.find {|d| d.encoding.quality.first == quality}
+      d = Derivative.from_output(outputs,managed)
       d.masterfile = self
-      existing.delete if d.save && existing
+      if d.save && existing
+        existing.delete
+      end
     end
 
     save
   end
 
-  alias _poster_offset= poster_offset=
+  alias_method :'_poster_offset=', :'poster_offset='
   def poster_offset=(value)
-    set_image_offset(:poster, value)
-    set_image_offset(:thumbnail, value) # Keep stills in sync
+    set_image_offset(:poster,value)
+    set_image_offset(:thumbnail,value) # Keep stills in sync
   end
 
-  alias _thumbnail_offset= thumbnail_offset=
+  alias_method :'_thumbnail_offset=', :'thumbnail_offset='
   def thumbnail_offset=(value)
-    set_image_offset(:thumbnail, value)
-    set_image_offset(:poster, value) # Keep stills in sync
+    set_image_offset(:thumbnail,value)
+    set_image_offset(:poster,value)  # Keep stills in sync
   end
 
   def set_image_offset(type, value)
     milliseconds = if value.is_a?(Numeric)
-                     value.floor
-                   elsif value.is_a?(String)
-                     result = 0
-                     segments = value.split(/:/).reverse
-                     segments.each_with_index { |v, i| result += i > 0 ? v.to_f * (60**i) * 1000 : (v.to_f * 1000) }
-                     result.to_i
-                   else
-                     value.to_i
+      value.floor
+    elsif value.is_a?(String)
+      result = 0
+      segments = value.split(/:/).reverse
+      segments.each_with_index { |v,i| result += i > 0 ? v.to_f * (60**i) * 1000 : (v.to_f * 1000) }
+      result.to_i
+    else
+      value.to_i
     end
 
-    return milliseconds if milliseconds == send("#{type}_offset").to_i
+    return milliseconds if milliseconds == self.send("#{type}_offset").to_i
 
     @stills_to_update ||= []
     @stills_to_update << type
-    send("_#{type}_offset=".to_sym, milliseconds.to_s)
+    self.send("_#{type}_offset=".to_sym,milliseconds.to_s)
     milliseconds
   end
 
   def update_stills_from_offset!
     if @stills_to_update.present?
       # Update stills together
-      self.class.extract_still(pid, type: 'both', offset: poster_offset)
+      self.class.extract_still(self.pid, :type => 'both', :offset => self.poster_offset)
 
       # Update stills independently
       # @stills_to_update.each do |type|
@@ -375,7 +384,7 @@ class MasterFile < ActiveFedora::Base
     true
   end
 
-  def extract_still(options = {})
+  def extract_still(options={})
     default_frame_sizes = {
       'poster'    => '1024x768',
       'thumbnail' => '160x120'
@@ -385,12 +394,12 @@ class MasterFile < ActiveFedora::Base
     type = options[:type] || 'both'
     if is_video?
       if type == 'both'
-        result = extract_still(options.merge(type: 'poster'))
-        extract_still(options.merge(type: 'thumbnail'))
+        result = self.extract_still(options.merge(:type => 'poster'))
+        self.extract_still(options.merge(:type => 'thumbnail'))
       else
         frame_size = options[:size] || default_frame_sizes[options[:type]]
-        ds = datastreams[type]
-        result = extract_frame(options.merge(size: frame_size))
+        ds = self.datastreams[type]
+        result = extract_frame(options.merge(:size => frame_size))
         unless options[:preview]
           ds.mimeType = 'image/jpeg'
           ds.content = StringIO.new(result)
@@ -402,8 +411,8 @@ class MasterFile < ActiveFedora::Base
   end
 
   class << self
-    def extract_still(pid, options = {})
-      obj = find(pid)
+    def extract_still(pid, options={})
+      obj = self.find(pid)
       obj.extract_still(options)
     end
     handle_asynchronously :extract_still
@@ -420,15 +429,11 @@ class MasterFile < ActiveFedora::Base
   def file_location=(value)
     file_location_will_change!
     descMetadata.file_location = value
-    self.absolute_location = if value.blank?
-                               value
-                             else
-                               begin
-                                 Avalon::FileResolver.new.path_to(value)
-                               rescue
-                                 nil
-                               end
-                             end
+    if value.blank?
+      self.absolute_location = value
+    else
+      self.absolute_location = Avalon::FileResolver.new.path_to(value) rescue nil
+    end
   end
 
   def encoder_class
@@ -438,7 +443,7 @@ class MasterFile < ActiveFedora::Base
   def encoder_class=(value)
     if value.nil?
       mhMetadata.encoder_classname = nil
-    elsif value.is_a?(Class) && value.ancestors.include?(ActiveEncode::Base)
+    elsif value.is_a?(Class) and value.ancestors.include?(ActiveEncode::Base)
       mhMetadata.encoder_classname = value.name
     else
       raise ArgumentError, '#encoder_class must be a descendant of ActiveEncode::Base'
@@ -446,7 +451,7 @@ class MasterFile < ActiveFedora::Base
   end
 
   def structural_metadata_labels
-    structuralMetadata.xpath('//@label').collect(&:value)
+    structuralMetadata.xpath('//@label').collect{|a|a.value}
   end
 
   # Supplies the route to the master_file as an rdf formatted URI
@@ -469,47 +474,47 @@ class MasterFile < ActiveFedora::Base
     @mediainfo ||= Mediainfo.new file_location
   end
 
-  def find_frame_source(options = {})
+  def find_frame_source(options={})
     options[:offset] ||= 2000
 
     response = { source: file_location, offset: options[:offset], master: true }
-    unless File.exist?(response[:source])
+    unless File.exists?(response[:source])
       Rails.logger.warn("Masterfile `#{file_location}` not found. Extracting via HLS.")
       begin
-        token = StreamToken.find_or_create_session_token({ media_token: nil }, pid)
-        playlist_url = stream_details(token)[:stream_hls].find { |d| d[:quality] == 'high' }[:url]
+        token = StreamToken.find_or_create_session_token({media_token:nil}, self.pid)
+        playlist_url = self.stream_details(token)[:stream_hls].find { |d| d[:quality] == 'high' }[:url]
         playlist = Avalon::M3U8Reader.read(playlist_url)
         details = playlist.at(options[:offset])
-        target = File.join(Dir.tmpdir, File.basename(details[:location]))
-        File.open(target, 'wb') { |f| open(details[:location]) { |io| f.write(io.read) } }
+        target = File.join(Dir.tmpdir,File.basename(details[:location]))
+        File.open(target,'wb') { |f| open(details[:location]) { |io| f.write(io.read) } }
         response = { source: target, offset: details[:offset], master: false }
       ensure
         StreamToken.find_by_token(token).destroy
       end
     end
-    response
+    return response
   end
 
-  def extract_frame(options = {})
+  def extract_frame(options={})
     if is_video?
-      base = pid.tr(':', '_')
+      base = pid.gsub(/:/,'_')
       offset = options[:offset].to_i
-      unless offset.between?(0, duration.to_i)
-        raise RangeError, "Offset #{offset} not in range 0..#{duration}"
+      unless offset.between?(0,self.duration.to_i)
+        raise RangeError, "Offset #{offset} not in range 0..#{self.duration}"
       end
 
       ffmpeg = Avalon::Configuration.lookup('ffmpeg.path')
-      frame_size = (options[:size].nil? || options[:size] == 'auto') ? original_frame_size : options[:size]
+      frame_size = (options[:size].nil? or options[:size] == 'auto') ? self.original_frame_size : options[:size]
 
-      (new_width, new_height) = frame_size.split(/x/).collect &:to_f
-      new_height = (new_width / display_aspect_ratio.to_f).floor
+      (new_width,new_height) = frame_size.split(/x/).collect &:to_f
+      new_height = (new_width/self.display_aspect_ratio.to_f).floor
       new_height += 1 if new_height.odd?
-      aspect = new_width / new_height
+      aspect = new_width/new_height
 
       frame_source = find_frame_source(offset: offset)
-      Tempfile.open([base, '.jpg']) do |jpeg|
-        file_source = File.join(File.dirname(jpeg.path), "#{File.basename(jpeg.path, File.extname(jpeg.path))}#{File.extname(frame_source[:source])}")
-        File.symlink(frame_source[:source], file_source)
+      Tempfile.open([base,'.jpg']) do |jpeg|
+        file_source = File.join(File.dirname(jpeg.path),"#{File.basename(jpeg.path,File.extname(jpeg.path))}#{File.extname(frame_source[:source])}")
+        File.symlink(frame_source[:source],file_source)
         begin
           options = [
             '-i',       file_source,
@@ -520,15 +525,17 @@ class MasterFile < ActiveFedora::Base
             '-f',       'image2',
             '-y',       jpeg.path
           ]
-          options[0..3] = options.values_at(2, 3, 0, 1) if frame_source[:master]
+          if frame_source[:master]
+            options[0..3] = options.values_at(2,3,0,1)
+          end
           Kernel.system(ffmpeg, *options)
           jpeg.rewind
           data = jpeg.read
           Rails.logger.debug("Generated #{data.length} bytes of data")
-          if (!frame_source[:master]) && data.empty?
+          if (!frame_source[:master]) and data.length == 0
             # -ss before -i is faster, but fails on some files.
-            Rails.logger.warn('No data received. Swapping -ss and -i options')
-            options[0..3] = options.values_at(2, 3, 0, 1)
+            Rails.logger.warn("No data received. Swapping -ss and -i options")
+            options[0..3] = options.values_at(2,3,0,1)
             Kernel.system(ffmpeg, *options)
             jpeg.rewind
             data = jpeg.read
@@ -539,44 +546,46 @@ class MasterFile < ActiveFedora::Base
           File.unlink(file_source)
         end
       end
+    else
+      nil
     end
   end
 
-  def calculate_percent_complete(matterhorn_response)
+  def calculate_percent_complete matterhorn_response
     totals = {
-      transcode: 70,
-      distribution: 20,
-      cleaning: 0,
-      other: 10
+      :transcode => 70,
+      :distribution => 20,
+      :cleaning => 0,
+      :other => 10
     }
 
-    operations = matterhorn_response.find_by_terms(:operations, :operation).collect do |op|
+    operations = matterhorn_response.find_by_terms(:operations, :operation).collect { |op|
       type = case op['description']
              when /mp4/ then :transcode
              when /^Distributing/ then :distribution
              else :other
              end
-      { description: op['description'], state: op['state'], type: type }
-    end
+      { :description => op['description'], :state => op['state'], :type => type }
+    }
 
-    result = Hash.new { |h, k| h[k] = 0 }
-    operations.each do |op|
+    result = Hash.new { |h,k| h[k] = 0 }
+    operations.each { |op|
       op[:pct] = (totals[op[:type]].to_f / operations.select { |o| o[:type] == op[:type] }.count.to_f)
       state = op[:state].downcase.to_sym
       result[state] += op[:pct]
       result[:complete] += op[:pct] if END_STATES.include?(op[:state])
-    end
+    }
     result[:succeeded] += result.delete(:skipped) unless result[:skipped].nil?
-    result.each { |k, _v| result[k] = result[k].round }
+    result.each {|k,v| result[k] = result[k].round }
     result
   end
 
-  def saveOriginal(file, original_name = nil)
+  def saveOriginal(file, original_name=nil)
     realpath = File.realpath(file.path)
     if original_name.present?
       config_path = Avalon::Configuration.lookup('matterhorn.media_path')
       newpath = nil
-      if config_path.present? && File.directory?(config_path)
+      if config_path.present? and File.directory?(config_path)
         newpath = File.join(config_path, original_name)
         FileUtils.cp(realpath, newpath)
       else
@@ -592,17 +601,18 @@ class MasterFile < ActiveFedora::Base
   end
 
   def reloadTechnicalMetadata!
-    # Reset mediainfo
+    #Reset mediainfo
     @mediainfo = nil
 
     # Formats like MP4 can be caught as both audio and video
     # so the case statement flows in the preferred order
-    self.file_format = if mediainfo.video?
-                         'Moving image'
-                       elsif mediainfo.audio?
-                         'Sound'
-                       else
-                         'Unknown'
+    self.file_format = case
+                    when mediainfo.video?
+                      'Moving image'
+                    when mediainfo.audio?
+                       'Sound'
+                    else
+                       'Unknown'
                     end
 
     self.duration = begin
@@ -613,32 +623,34 @@ class MasterFile < ActiveFedora::Base
 
     unless mediainfo.video.streams.empty?
       display_aspect_ratio_s = mediainfo.video.streams.first.display_aspect_ratio
-      self.display_aspect_ratio = if ':'.in? display_aspect_ratio_s
-                                    display_aspect_ratio_s.split(/:/).collect(&:to_f).reduce(:/).to_s
-                                  else
-                                    display_aspect_ratio_s
-                                  end
+      if ':'.in? display_aspect_ratio_s
+        self.display_aspect_ratio = display_aspect_ratio_s.split(/:/).collect(&:to_f).reduce(:/).to_s
+      else
+        self.display_aspect_ratio = display_aspect_ratio_s
+      end
       self.original_frame_size = mediainfo.video.streams.first.frame_size
-      self.poster_offset = [2000, mediainfo.duration.to_i].min
+      self.poster_offset = [2000,mediainfo.duration.to_i].min
     end
   end
 
   def post_processing_file_management
-    logger.debug 'Finished processing'
+    logger.debug "Finished processing"
 
     case Avalon::Configuration.lookup('master_file_management.strategy')
     when 'delete'
-      AvalonJobs.delete_masterfile pid
+      AvalonJobs.delete_masterfile self.pid
     when 'move'
       move_path = Avalon::Configuration.lookup('master_file_management.path')
       raise '"path" configuration missing for master_file_management strategy "move"' if move_path.blank?
-      newpath = File.join(move_path, post_processing_move_filename(file_location, pid: pid))
-      AvalonJobs.move_masterfile pid, newpath
+      newpath = File.join(move_path, post_processing_move_filename(file_location, pid: self.pid))
+      AvalonJobs.move_masterfile self.pid, newpath
+    else
+      # Do nothing
     end
   end
 
-  def post_processing_move_filename(oldpath, options = {})
-    prefix = options[:pid].tr(':', '_')
+  def post_processing_move_filename(oldpath, options={})
+    prefix = options[:pid].gsub(":","_")
     if oldpath.start_with?(prefix)
       oldpath
     else
@@ -647,8 +659,8 @@ class MasterFile < ActiveFedora::Base
   end
 
   def update_ingest_batch
-    ingest_batch = IngestBatch.find_ingest_batch_by_media_object_id(mediaobject.id)
-    if ingest_batch && !ingest_batch.email_sent? && ingest_batch.finished?
+    ingest_batch = IngestBatch.find_ingest_batch_by_media_object_id( self.mediaobject.id )
+    if ingest_batch && ! ingest_batch.email_sent? && ingest_batch.finished?
       IngestBatchMailer.status_email(ingest_batch.id).deliver
       ingest_batch.email_sent = true
       ingest_batch.save!

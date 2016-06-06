@@ -3,6 +3,7 @@ require 'hydra/multiple_policy_aware_access_controls_enforcement'
 require 'hydra/multiple_policy_aware_ability'
 
 Hydra.configure do |config|
+
   silence_warnings do
     Hydra::AccessControls::AccessRight::VISIBILITY_TEXT_VALUE_PUBLIC = 'public'.freeze
     Hydra::AccessControls::AccessRight::VISIBILITY_TEXT_VALUE_AUTHENTICATED = 'restricted'.freeze
@@ -26,13 +27,13 @@ Hydra.configure do |config|
   #
   # specify the user model
   # config.user_model = '#{model_name.classify}'
-
-  config.permissions.inheritable.discover.group = ActiveFedora::SolrService.solr_name('inheritable_discover_access_group', :symbol)
-  config.permissions.inheritable.discover.individual = ActiveFedora::SolrService.solr_name('inheritable_discover_access_person', :symbol)
-  config.permissions.inheritable.read.group = ActiveFedora::SolrService.solr_name('inheritable_read_access_group', :symbol)
-  config.permissions.inheritable.read.individual = ActiveFedora::SolrService.solr_name('inheritable_read_access_person', :symbol)
-  config.permissions.inheritable.edit.group = ActiveFedora::SolrService.solr_name('inheritable_edit_access_group', :symbol)
-  config.permissions.inheritable.edit.individual = ActiveFedora::SolrService.solr_name('inheritable_edit_access_person', :symbol)
-  # config.permissions.policy_class = Admin::Collection
-  config.permissions.policy_class = { Admin::Collection => {}, Lease => { clause: ' AND begin_time_dti:[* TO NOW] AND end_time_dti:[NOW TO *]' } }
+ 
+  config.permissions.inheritable.discover.group = ActiveFedora::SolrService.solr_name("inheritable_discover_access_group", :symbol)
+  config.permissions.inheritable.discover.individual = ActiveFedora::SolrService.solr_name("inheritable_discover_access_person", :symbol)
+  config.permissions.inheritable.read.group = ActiveFedora::SolrService.solr_name("inheritable_read_access_group", :symbol)
+  config.permissions.inheritable.read.individual = ActiveFedora::SolrService.solr_name("inheritable_read_access_person", :symbol)
+  config.permissions.inheritable.edit.group = ActiveFedora::SolrService.solr_name("inheritable_edit_access_group", :symbol)
+  config.permissions.inheritable.edit.individual = ActiveFedora::SolrService.solr_name("inheritable_edit_access_person", :symbol)
+  #config.permissions.policy_class = Admin::Collection
+  config.permissions.policy_class = {Admin::Collection => {}, Lease => {clause: " AND begin_time_dti:[* TO NOW] AND end_time_dti:[NOW TO *]"}}
 end
