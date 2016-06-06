@@ -14,11 +14,11 @@
 
 FactoryGirl.define do
   factory :master_file do
-    file_location {'/path/to/video.mp4'}
-    file_format {'Moving image'}
-    percent_complete {"#{rand(100)}"}
+    file_location { '/path/to/video.mp4' }
+    file_format { 'Moving image' }
+    percent_complete { rand(100).to_s }
     workflow_name 'avalon'
-    duration {'100'}
+    duration { '100' }
     association :mediaobject, factory: :media_object
 
     factory :master_file_with_derivative do

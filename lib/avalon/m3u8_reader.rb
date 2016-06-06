@@ -1,14 +1,14 @@
 # Copyright 2011-2015, The Trustees of Indiana University and Northwestern
 #   University.  Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
-# 
+#
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
+#
+# Unless required by applicable law or agreed to in writing, software distributed
 #   under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-#   CONDITIONS OF ANY KIND, either express or implied. See the License for the 
+#   CONDITIONS OF ANY KIND, either express or implied. See the License for the
 #   specific language governing permissions and limitations under the License.
 # ---  END LICENSE_HEADER BLOCK  ---
 
@@ -17,72 +17,69 @@ require 'uri'
 
 module Avalon
   class M3U8Reader
-
     attr_reader :playlist
 
     def self.read(io)
       if io.is_a?(IO)
-        self.new(io.read)
+        new(io.read)
       elsif io.is_a?(String)
         if io =~ /^https?:/
-          open(io) { |resp| self.new(resp, URI.parse(io)) }
+          open(io) { |resp| new(resp, URI.parse(io)) }
         elsif io =~ /\.m3u8?$/i
-          self.new(File.read(io), io)
+          new(File.read(io), io)
         else
-          self.new(io)
+          new(io)
         end
       end
     end
 
-    def initialize(playlist, base='')
+    def initialize(playlist, base = '')
       @base = base
       @playlist = { files: [] }
       tags = {}
-      playlist.lines.each { |l|
+      playlist.lines.each do |l|
         line = l.chomp
         if line =~ /^#EXTM3U/
           # ignore
         elsif line =~ /^#EXT-X-(.+):(.+)$/
-          value = $2
-          tag = $1.downcase.gsub(/-/,"_")
+          value = Regexp.last_match(2)
+          tag = Regexp.last_match(1).downcase.tr('-', '_')
           @playlist[tag] = value
         elsif line =~ /^#EXTINF:(.+),(.*)$/
-          tags[:duration] = $1.to_f
-          tags[:title] = $2
+          tags[:duration] = Regexp.last_match(1).to_f
+          tags[:title] = Regexp.last_match(2)
         elsif line =~ /\.m3u8?.*$/i
-          url = @base.is_a?(URI) ? @base.merge(line).to_s : File.expand_path(line,@base.to_s)
+          url = @base.is_a?(URI) ? @base.merge(line).to_s : File.expand_path(line, @base.to_s)
           @playlist.merge!(Avalon::M3U8Reader.read(url).playlist)
         elsif line =~ /^[^#]/
           tags[:filename] = line
           @playlist[:files] << tags
           tags = {}
         end
-      }
+      end
     end
 
     def duration
-      files.inject(0.0) { |v,f| v + f[:duration] }
+      files.inject(0.0) { |v, f| v + f[:duration] }
     end
 
     def at(offset)
       offset = offset.to_i
-      if offset < 0
-        raise RangeError, "Offset out of range"
-      end
+      raise RangeError, 'Offset out of range' if offset < 0
       elapsed = 0.0
-      files.each { |f|
+      files.each do |f|
         duration = f[:duration] * 1000
         if elapsed + duration > offset
-          location = @base.is_a?(URI) ? @base.merge(f[:filename]).to_s : File.expand_path(f[:filename],@base.to_s)
+          location = @base.is_a?(URI) ? @base.merge(f[:filename]).to_s : File.expand_path(f[:filename], @base.to_s)
           return { location: location, filename: f[:filename], offset: offset - elapsed }
         end
         elapsed += duration
-      }
-      raise RangeError, "Offset out of range"
+      end
+      raise RangeError, 'Offset out of range'
     end
 
     def method_missing(sym, *args)
-      if @playlist.has_key?(sym)
+      if @playlist.key?(sym)
         @playlist[sym]
       else
         super

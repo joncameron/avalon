@@ -15,8 +15,8 @@
 require 'spec_helper'
 
 describe AvalonAnnotation do
-  subject(:video_master_file) { FactoryGirl.create(:master_file, duration: "1") }
-  #subject(:sound_master_file) { FactoryGirl.create(:master_file_sound) }
+  subject(:video_master_file) { FactoryGirl.create(:master_file, duration: '1') }
+  # subject(:sound_master_file) { FactoryGirl.create(:master_file_sound) }
   let(:annotation) { AvalonAnnotation.new(master_file: video_master_file) }
 
   describe 'creating an annotation' do
@@ -93,7 +93,7 @@ describe AvalonAnnotation do
   describe 'selector' do
     it 'can create the selector using the start and end time' do
       video_master_file.stub(:rdf_uri).and_return(RuntimeError, 'htt://www.avalon.edu/obj')
-      expect{ annotation.mediafragment_uri }.not_to raise_error
+      expect { annotation.mediafragment_uri }.not_to raise_error
     end
   end
   describe 'solr' do
@@ -144,13 +144,13 @@ describe AvalonAnnotation do
   end
   describe 'related annotations' do
     let(:second_annotation) { AvalonAnnotation.new(master_file: video_master_file) }
-    let!(:user) {FactoryGirl.build(:user)}
+    let!(:user) { FactoryGirl.build(:user) }
     it 'returns nil when there are no related annotations' do
       allow(PlaylistItem).to receive(:where).and_return([])
       expect(annotation.playlist_position(1)).to be_nil
     end
     it 'returns position when there is a related annotation' do
-      #byebug
+      # byebug
       stub_playlist
       expect(annotation.playlist_position(@playlist.id)).to eq(1)
       expect(second_annotation.playlist_position(@playlist.id)).to eq(2)

@@ -40,27 +40,27 @@ RSpec.describe PlaylistsController, type: :controller do
   describe 'security' do
     let(:playlist) { FactoryGirl.create(:playlist) }
     context 'with unauthenticated user' do
-      #New is isolated here due to issues caused by the controller instance not being regenerated
-      it "should redirect to sign in" do
-        expect(get :new).to redirect_to(new_user_session_path)
+      # New is isolated here due to issues caused by the controller instance not being regenerated
+      it 'should redirect to sign in' do
+        expect(get(:new)).to redirect_to(new_user_session_path)
       end
-      it "all routes should redirect to sign in" do
-        expect(get :index).to redirect_to(new_user_session_path)
-        expect(get :edit, id: playlist.id).to redirect_to(new_user_session_path)
-        expect(post :create).to redirect_to(new_user_session_path)
-        expect(put :update, id: playlist.id).to redirect_to(new_user_session_path)
-        expect(put :update_multiple, id: playlist.id).to redirect_to(new_user_session_path)
-        expect(delete :destroy, id: playlist.id).to redirect_to(new_user_session_path)
+      it 'all routes should redirect to sign in' do
+        expect(get(:index)).to redirect_to(new_user_session_path)
+        expect(get(:edit, id: playlist.id)).to redirect_to(new_user_session_path)
+        expect(post(:create)).to redirect_to(new_user_session_path)
+        expect(put(:update, id: playlist.id)).to redirect_to(new_user_session_path)
+        expect(put(:update_multiple, id: playlist.id)).to redirect_to(new_user_session_path)
+        expect(delete(:destroy, id: playlist.id)).to redirect_to(new_user_session_path)
       end
       context 'with a public playlist' do
         let(:playlist) { FactoryGirl.create(:playlist, visibility: Playlist::PUBLIC) }
-        it "should return the playlist view page" do
-          expect(get :show, id: playlist.id).not_to redirect_to(new_user_session_path)
+        it 'should return the playlist view page' do
+          expect(get(:show, id: playlist.id)).not_to redirect_to(new_user_session_path)
         end
       end
       context 'with a private playlist' do
-        it "should NOT return the playlist view page" do
-          expect(get :show, id: playlist.id).to redirect_to(new_user_session_path)
+        it 'should NOT return the playlist view page' do
+          expect(get(:show, id: playlist.id)).to redirect_to(new_user_session_path)
         end
       end
     end
@@ -68,21 +68,21 @@ RSpec.describe PlaylistsController, type: :controller do
       before do
         login_as :user
       end
-      it "all routes should redirect to /" do
-        expect(get :edit, id: playlist.id).to redirect_to(root_path)
-        expect(put :update, id: playlist.id).to redirect_to(root_path)
-        expect(put :update_multiple, id: playlist.id).to redirect_to(root_path)
-        expect(delete :destroy, id: playlist.id).to redirect_to(root_path)
+      it 'all routes should redirect to /' do
+        expect(get(:edit, id: playlist.id)).to redirect_to(root_path)
+        expect(put(:update, id: playlist.id)).to redirect_to(root_path)
+        expect(put(:update_multiple, id: playlist.id)).to redirect_to(root_path)
+        expect(delete(:destroy, id: playlist.id)).to redirect_to(root_path)
       end
       context 'with a public playlist' do
         let(:playlist) { FactoryGirl.create(:playlist, visibility: Playlist::PUBLIC) }
-        it "should return the playlist view page" do
-          expect(get :show, id: playlist.id).not_to redirect_to(root_path)
+        it 'should return the playlist view page' do
+          expect(get(:show, id: playlist.id)).not_to redirect_to(root_path)
         end
       end
       context 'with a private playlist' do
-        it "should NOT return the playlist view page" do
-          expect(get :show, id: playlist.id).to redirect_to(root_path)
+        it 'should NOT return the playlist view page' do
+          expect(get(:show, id: playlist.id)).to redirect_to(root_path)
         end
       end
     end
@@ -235,5 +235,4 @@ RSpec.describe PlaylistsController, type: :controller do
       expect(assigns(:playlist)).to eq(playlist)
     end
   end
-
 end

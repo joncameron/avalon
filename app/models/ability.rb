@@ -21,16 +21,16 @@ class Ability
     return @user_groups if @user_groups
 
     @user_groups = default_user_groups
-    @user_groups |= current_user.groups if current_user and current_user.respond_to? :groups
+    @user_groups |= current_user.groups if current_user && current_user.respond_to?(:groups)
     @user_groups |= ['registered'] unless current_user.new_record?
-    @user_groups |= @session[:virtual_groups] if @session.present? and @session.has_key? :virtual_groups
-    @user_groups |= [@session[:remote_ip]] if @session.present? and @session.has_key? :remote_ip
+    @user_groups |= @session[:virtual_groups] if @session.present? && @session.key?(:virtual_groups)
+    @user_groups |= [@session[:remote_ip]] if @session.present? && @session.key?(:remote_ip)
     @user_groups
   end
 
-  def create_permissions(user=nil, session=nil)
+  def create_permissions(_user = nil, _session = nil)
     if full_login?
-      if @user_groups.include? "administrator"
+      if @user_groups.include? 'administrator'
         can :manage, MediaObject
         can :manage, MasterFile
         can :inspect, MediaObject
@@ -38,25 +38,21 @@ class Ability
         can :manage, Admin::Collection
       end
 
-      if @user_groups.include? "group_manager"
+      if @user_groups.include? 'group_manager'
         can :manage, Admin::Group do |group|
-          group.nil? or !['administrator','group_manager'].include?(group.name)
+          group.nil? || !%w(administrator group_manager).include?(group.name)
         end
       end
 
-      if is_member_of_any_collection?
-        can :create, MediaObject
-      end
+      can :create, MediaObject if is_member_of_any_collection?
 
-      if @user_groups.include? "manager"
-        can :create, Admin::Collection
-      end
+      can :create, Admin::Collection if @user_groups.include? 'manager'
     end
   end
 
-  def custom_permissions(user=nil, session=nil)
+  def custom_permissions(_user = nil, _session = nil)
     playlist_permissions
-    unless full_login? and @user_groups.include? "administrator"
+    unless full_login? && @user_groups.include?('administrator')
       cannot :read, MediaObject do |mediaobject|
         !(test_read(mediaobject.pid) && mediaobject.published?) && !test_edit(mediaobject.pid)
       end
@@ -76,7 +72,7 @@ class Ability
           is_member_of?(collection)
         end
 
-        unless (is_member_of_any_collection? or @user_groups.include? 'manager')
+        unless is_member_of_any_collection? || @user_groups.include?('manager')
           cannot :read, Admin::Collection
         end
 
@@ -114,7 +110,7 @@ class Ability
         end
 
         can :inspect, MediaObject do |mediaobject|
-         is_member_of?(mediaobject.collection)
+          is_member_of?(mediaobject.collection)
         end
 
         # Users logged in through LTI cannot share
@@ -128,18 +124,18 @@ class Ability
       end
 
       cannot :update, MediaObject do |mediaobject|
-        (not full_login?) || (!is_member_of?(mediaobject.collection)) ||
-          ( mediaobject.published? && !@user.in?(mediaobject.collection.managers) )
+        !full_login? || !is_member_of?(mediaobject.collection) ||
+          (mediaobject.published? && !@user.in?(mediaobject.collection.managers))
       end
 
       cannot :destroy, MediaObject do |mediaobject|
         # non-managers can only destroy mediaobject if it's unpublished
-        (not full_login?) || (!is_member_of?(mediaobject.collection)) ||
-          ( mediaobject.published? && !@user.in?(mediaobject.collection.managers) )
+        !full_login? || !is_member_of?(mediaobject.collection) ||
+          (mediaobject.published? && !@user.in?(mediaobject.collection.managers))
       end
 
-      cannot :destroy, Admin::Collection do |collection, other_user_collections=[]|
-        (not full_login?) || !@user.in?(collection.managers)
+      cannot :destroy, Admin::Collection do |collection, _other_user_collections = []|
+        !full_login? || !@user.in?(collection.managers)
       end
     end
   end
@@ -161,28 +157,28 @@ class Ability
       end
       can :read, PlaylistItem do |playlist_item|
         (can? :read, playlist_item.playlist) &&
-        (can? :read, playlist_item.master_file)
+          (can? :read, playlist_item.master_file)
       end
     end
   end
 
   def is_member_of?(collection)
-     @user_groups.include?("administrator") ||
-       @user.in?(collection.managers, collection.editors, collection.depositors)
+    @user_groups.include?('administrator') ||
+      @user.in?(collection.managers, collection.editors, collection.depositors)
   end
 
   def is_editor_of?(collection)
-     @user_groups.include?("administrator") ||
-       @user.in?(collection.managers, collection.editors)
+    @user_groups.include?('administrator') ||
+      @user.in?(collection.managers, collection.editors)
   end
 
   def is_member_of_any_collection?
-    @user.id.present? and Admin::Collection.where("#{ActiveFedora::SolrService.solr_name("inheritable_edit_access_person", Hydra::Datastream::RightsMetadata.indexer)}" => @user.user_key).first.present?
+    @user.id.present? && Admin::Collection.where(ActiveFedora::SolrService.solr_name('inheritable_edit_access_person', Hydra::Datastream::RightsMetadata.indexer).to_s => @user.user_key).first.present?
   end
 
   def full_login?
     return @full_login unless @full_login.nil?
-    @full_login = ( @session.present? and @session.has_key? :full_login ) ? @session[:full_login] : true
+    @full_login = (@session.present? && @session.key?(:full_login)) ? @session[:full_login] : true
     @full_login
   end
 
@@ -191,5 +187,4 @@ class Ability
     @json_api_login ||= false
     @json_api_login
   end
-
 end

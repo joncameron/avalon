@@ -43,7 +43,7 @@ class Lease < ActiveFedora::Base
   # Converts the object to a solr hash for indexing
   # @param [Hash] solr_doc A hash passable to solr, an empty one is created by default_field_mapper
   #
-  def to_solr(solr_doc = {}, *args)
+  def to_solr(solr_doc = {}, *_args)
     solr_doc = super(solr_doc)
     Solrizer.insert_field(solr_doc, 'begin_time', begin_time, :sortable)
     Solrizer.insert_field(solr_doc, 'end_time', end_time, :sortable)
@@ -67,7 +67,7 @@ class Lease < ActiveFedora::Base
   # A before_save action that raises an ArgumentError if end_time is not set
   # @raise [ArgumentError] raised if end_time is nil
   def ensure_end_time_present
-    fail ArgumentError, 'No end_time supplied' if end_time.nil?
+    raise ArgumentError, 'No end_time supplied' if end_time.nil?
   end
 
   # A before_save action that ensures begin_time preceeds end_time
@@ -75,7 +75,7 @@ class Lease < ActiveFedora::Base
   def validate_dates
     apply_default_begin_time
     # We use <= since we have times on our dates, so if they're equal it means a lease with a duration of 0 seconds
-    fail ArgumentError, 'end_time predates begin_time' if end_time <= begin_time
+    raise ArgumentError, 'end_time predates begin_time' if end_time <= begin_time
   end
 
   # Take a supplied date and format it in iso8601 with the time portion set to 00:00:00 UTC
@@ -95,12 +95,15 @@ class Lease < ActiveFedora::Base
   # Calculate lease type by inspecting read_users and read_groups values, each of which are assumed to contain a single value
   # @return [String] "user" for user lease, "ip" for ip group lease, "local" for local group lease, "external" for external group lease, nil for others
   def lease_type
-    return "user" if self.read_users.present?
-    group = self.read_groups.first
+    return 'user' if read_users.present?
+    group = read_groups.first
     return nil if group.nil?
-    return "ip" if IPAddr.new(group) rescue false
-    return "local" if Admin::Group.exists? group
-    return "external"
+    begin
+      return 'ip' if IPAddr.new(group)
+    rescue
+      false
+    end
+    return 'local' if Admin::Group.exists? group
+    'external'
   end
-
 end

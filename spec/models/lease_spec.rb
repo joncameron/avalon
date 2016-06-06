@@ -15,7 +15,7 @@
 require 'spec_helper'
 
 describe Lease do
-  let!(:lease) {FactoryGirl.create(:lease)}
+  let!(:lease) { FactoryGirl.create(:lease) }
 
   describe 'Valid Lease Term' do
     it 'should return true when the date is between the lease periods' do
@@ -155,33 +155,33 @@ describe Lease do
     it 'removes multi valued date fields' do
       solr_hash = lease.to_solr
       @deleted_fields.each do |field|
-        expect(solr_hash.keys.include? field).to be_falsey
+        expect(solr_hash.keys.include?(field)).to be_falsey
       end
     end
     it 'adds and populates the appriorate dti fields' do
       solr_hash = lease.to_solr
-      expect(solr_hash.keys.include? @begin_time_field).to be_truthy
+      expect(solr_hash.keys.include?(@begin_time_field)).to be_truthy
       expect(solr_hash[@begin_time_field].size).to eq(@lenght_of_a_iso8601_time)
-      expect(solr_hash.keys.include? @end_time_field).to be_truthy
+      expect(solr_hash.keys.include?(@end_time_field)).to be_truthy
       expect(solr_hash[@begin_time_field].size).to eq(@lenght_of_a_iso8601_time)
     end
   end
   describe '#lease_type' do
     it 'identifies user lease_type' do
       lease.read_users = [Faker::Internet.email]
-      expect(lease.lease_type).to eq "user"
+      expect(lease.lease_type).to eq 'user'
     end
     it 'identifies group lease_type' do
       lease.read_groups = [FactoryGirl.create(:group).name]
-      expect(lease.lease_type).to eq "local"
+      expect(lease.lease_type).to eq 'local'
     end
     it 'identifies external_group lease_type' do
-      lease.read_groups = ["ExternalGroup"]
-      expect(lease.lease_type).to eq "external"
+      lease.read_groups = ['ExternalGroup']
+      expect(lease.lease_type).to eq 'external'
     end
     it 'identifies ip lease_type' do
       lease.read_groups = [Faker::Internet.ip_v4_address]
-      expect(lease.lease_type).to eq "ip"
+      expect(lease.lease_type).to eq 'ip'
     end
   end
 end

@@ -10,28 +10,28 @@ RSpec.describe Playlist, type: :model do
   end
 
   describe 'abilities' do
-    subject{ ability }
-    let(:ability){ Ability.new(user) }
-    let(:user){ FactoryGirl.create(:user) }
+    subject { ability }
+    let(:ability) { Ability.new(user) }
+    let(:user) { FactoryGirl.create(:user) }
 
     context 'when owner' do
       let(:playlist) { FactoryGirl.create(:playlist, user: user) }
 
-      it{ is_expected.to be_able_to(:manage, playlist) }
-      it{ is_expected.to be_able_to(:create, playlist) }
-      it{ is_expected.to be_able_to(:read, playlist) }
-      it{ is_expected.to be_able_to(:update, playlist) }
-      it{ is_expected.to be_able_to(:delete, playlist) }
+      it { is_expected.to be_able_to(:manage, playlist) }
+      it { is_expected.to be_able_to(:create, playlist) }
+      it { is_expected.to be_able_to(:read, playlist) }
+      it { is_expected.to be_able_to(:update, playlist) }
+      it { is_expected.to be_able_to(:delete, playlist) }
     end
 
     context 'when other user' do
       let(:playlist) { FactoryGirl.create(:playlist, visibility: Playlist::PUBLIC) }
 
-      it{ is_expected.not_to be_able_to(:manage, playlist) }
-      it{ is_expected.not_to be_able_to(:create, playlist) }
-      it{ is_expected.to be_able_to(:read, playlist) }
-      it{ is_expected.not_to be_able_to(:update, playlist) }
-      it{ is_expected.not_to be_able_to(:delete, playlist) }
+      it { is_expected.not_to be_able_to(:manage, playlist) }
+      it { is_expected.not_to be_able_to(:create, playlist) }
+      it { is_expected.to be_able_to(:read, playlist) }
+      it { is_expected.not_to be_able_to(:update, playlist) }
+      it { is_expected.not_to be_able_to(:delete, playlist) }
     end
   end
 
@@ -65,9 +65,7 @@ RSpec.describe Playlist, type: :model do
     end
     def setup_playlist
       annos = [v_one_annotation, v_two_annotation, s_one_annotation]
-      annos.each do |a|
-        a.save
-      end
+      annos.each(&:save)
       @playlist = Playlist.new
       @playlist.user_id = User.last.id
       @playlist.title = 'spec test'
