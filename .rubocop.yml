@@ -5,6 +5,7 @@ AllCops:
     - 'db/**/*'
     - 'spec/**/*'
     - 'test/**/*'
+    - 'lib/avalon/batch/manifest.rb'
 
 Rails:
   Enabled: true
